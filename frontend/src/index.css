@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+  }
+  *::-webkit-scrollbar { width: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
+  body {
+    @apply bg-surface-dark text-gray-100 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+  .glass-card {
+    @apply glass rounded-2xl p-6;
+  }
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-primary-500/25;
+  }
+  .btn-radio {
+    @apply bg-radio-500 hover:bg-radio-600 text-black font-semibold px-6 py-3 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-radio-500/25;
+  }
+  .input-field {
+    @apply w-full bg-surface-light border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all;
+  }
+  .skeleton {
+    @apply animate-pulse bg-surface-lighter rounded-xl;
+  }
+}
+
+@layer utilities {
+  .text-gradient-radio {
+    @apply bg-gradient-to-r from-radio-400 to-radio-600 bg-clip-text text-transparent;
+  }
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent;
+  }
+}
