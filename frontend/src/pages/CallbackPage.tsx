@@ -20,7 +20,15 @@ export default function CallbackPage() {
       // Exchange code for token via backend
       fetch(`/api/spotify/callback?code=${code}`)
         .then(res => res.json())
-        .then(() => navigate('/playlists'))
+        .then((data) => {
+          if (data.access_token) {
+            localStorage.setItem('spotify_access_token', data.access_token);
+          }
+          if (data.refresh_token) {
+            localStorage.setItem('spotify_refresh_token', data.refresh_token);
+          }
+          navigate('/playlists');
+        })
         .catch(() => navigate('/playlists?error=token_failed'));
     } else {
       navigate('/');

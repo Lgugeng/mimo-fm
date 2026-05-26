@@ -102,14 +102,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const howl = new Howl({
       src: [track.url],
       html5: true,
-      volume: state.volume,
+      volume: 0.8, // default, volume set via setVolume
       onload: () => dispatch({ type: 'SET_DURATION', duration: howl.duration() }),
       onend: () => dispatch({ type: 'NEXT' }),
       onplay: () => startTimeUpdate(),
     });
     howlRef.current = howl;
     howl.play();
-  }, [cleanup, startTimeUpdate, state.volume]);
+  }, [cleanup, startTimeUpdate]);
 
   const togglePlay = useCallback(() => {
     if (!howlRef.current) return;

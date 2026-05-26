@@ -2,12 +2,12 @@ import { apiFetch, streamSSE } from './client';
 import type { ChatRequest, Message } from '../types';
 
 export function sendMessage(
-  request: ChatRequest,
+  request: { messages: { role: string; content: string }[]; model?: string; temperature?: number; max_tokens?: number },
   onChunk: (text: string) => void,
   onDone: () => void,
   onError: (err: Error) => void
 ) {
-  return streamSSE('/chat', request as unknown as Record<string, unknown>, onChunk, onDone, onError);
+  return streamSSE('/chat', request as Record<string, unknown>, onChunk, onDone, onError);
 }
 
 export async function getConversations(): Promise<Message[]> {

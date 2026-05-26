@@ -22,13 +22,14 @@ export default function ChatPage() {
   }, [messages, streamingText]);
 
   const handleSend = async (text: string) => {
-    send({ message: text, voice_id: voiceId, stream: true });
+    send({ message: text });
   };
 
   const handleSpeak = async (text: string) => {
     try {
-      const { audio_url } = await synthesizeSpeech({ text, voice_id: voiceId });
-      playAudioUrl(audio_url, 'AI Response');
+      const { audio_base64 } = await synthesizeSpeech({ text, voice: voiceId, audio_format: 'wav' });
+      const audioUrl = `data:audio/wav;base64,${audio_base64}`;
+      playAudioUrl(audioUrl, 'AI Response');
     } catch (err) {
       console.error('TTS error:', err);
     }

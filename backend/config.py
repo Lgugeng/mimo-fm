@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     SPOTIFY_CLIENT_SECRET: str = ""
     SPOTIFY_REDIRECT_URI: str = "http://localhost:8000/api/spotify/callback"
     DATABASE_URL: str = "sqlite+aiosqlite:///./mimofm.db"
-    SECRET_KEY: str = "change-me-in-production"
+    SECRET_KEY: str = ""
 
     class Config:
         env_file = ".env"

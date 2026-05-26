@@ -90,9 +90,9 @@ export interface NarrationSegment {
 
 export interface RadioCreateRequest {
   playlist_id: string;
-  dj_voice_id: string;
-  style?: string;
-  greeting?: string;
+  access_token: string;
+  voice_description?: string;
+  voice?: string;
 }
 
 export interface AudioPlayerState {

@@ -5,10 +5,10 @@ export async function getSpotifyAuthUrl(): Promise<{ url: string }> {
   return apiFetch('/spotify/auth');
 }
 
-export async function getPlaylists(): Promise<SpotifyPlaylist[]> {
-  return apiFetch('/spotify/playlists');
+export async function getPlaylists(accessToken: string): Promise<SpotifyPlaylist[]> {
+  return apiFetch(`/spotify/playlists?access_token=${encodeURIComponent(accessToken)}`);
 }
 
-export async function getPlaylistTracks(playlistId: string) {
-  return apiFetch(`/spotify/playlists/${playlistId}/tracks`);
+export async function getPlaylistTracks(playlistId: string, accessToken: string) {
+  return apiFetch(`/spotify/playlist/${playlistId}/tracks?access_token=${encodeURIComponent(accessToken)}`);
 }

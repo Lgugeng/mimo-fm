@@ -75,6 +75,14 @@ class PlaylistInfo(BaseModel):
 
 # ── Radio ───────────────────────────────────────────────────────────────────
 
+class RadioCreateBody(BaseModel):
+    """Request body for creating a radio episode."""
+    playlist_id: str
+    access_token: str
+    voice_description: str = "A warm, friendly radio DJ host"
+    voice: str = "Chloe"
+
+
 class RadioSegment(BaseModel):
     type: str = Field(..., pattern="^(music|narration)$")
     title: str = ""

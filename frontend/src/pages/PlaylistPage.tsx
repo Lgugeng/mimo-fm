@@ -13,11 +13,13 @@ export default function PlaylistPage() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   const [selectedVoice, setSelectedVoice] = useState('warm-dj');
   const [isCreating, setIsCreating] = useState(false);
+  const spotifyToken = localStorage.getItem('spotify_access_token') || '';
 
   const { data: playlists, isLoading, error } = useQuery({
     queryKey: ['playlists'],
-    queryFn: getPlaylists,
+    queryFn: () => getPlaylists(spotifyToken),
     retry: false,
+    enabled: !!spotifyToken,
   });
 
   const handleConnect = async () => {
@@ -33,7 +35,12 @@ export default function PlaylistPage() {
     if (!selectedPlaylist) return;
     setIsCreating(true);
     try {
-      const episode = await createRadio({ playlist_id: selectedPlaylist, dj_voice_id: selectedVoice });
+      const episode = await createRadio({
+        playlist_id: selectedPlaylist,
+        access_token: spotifyToken,
+        voice_description: `A ${selectedVoice} radio DJ host`,
+        voice: selectedVoice,
+      });
       navigate(`/radio/${episode.id}`);
     } catch (err) {
       console.error('Create radio error:', err);

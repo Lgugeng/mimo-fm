@@ -27,8 +27,12 @@ export function useAudioPlayer() {
     if (!audioRef.current) audioRef.current = new Audio();
     audioRef.current.src = url;
     audioRef.current.volume = volume;
-    audioRef.current.play();
-    setIsPlaying(true);
+    audioRef.current.play()
+      .then(() => setIsPlaying(true))
+      .catch((err) => {
+        console.error('Audio playback failed:', err);
+        setIsPlaying(false);
+      });
   }, [volume]);
 
   const togglePlay = useCallback(() => {

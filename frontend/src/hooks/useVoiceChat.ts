@@ -7,21 +7,26 @@ export function useVoiceChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const controllerRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
 
-  const send = useCallback((request: ChatRequest) => {
+  const send = useCallback((request: ChatRequest): void => {
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       content: request.message,
       timestamp: Date.now(),
     };
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messagesRef.current, userMsg];
+    setMessages(updatedMessages);
     setIsStreaming(true);
     setStreamingText('');
 
     let accumulated = '';
+    // Build messages array for backend API
+    const apiMessages = updatedMessages.map(m => ({ role: m.role, content: m.content }));
     controllerRef.current = sendMessage(
-      request,
+      { messages: apiMessages },
       (chunk) => {
         accumulated += chunk;
         setStreamingText(accumulated);

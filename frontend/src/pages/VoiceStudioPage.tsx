@@ -47,8 +47,9 @@ export default function VoiceStudioPage() {
 
   const handlePreview = async (voiceId: string) => {
     try {
-      const { audio_url } = await synthesizeSpeech({ text: previewText, voice_id: voiceId });
-      playAudioUrl(audio_url, 'Voice Preview');
+      const { audio_base64 } = await synthesizeSpeech({ text: previewText, voice: voiceId, audio_format: 'wav' });
+      const audioUrl = `data:audio/wav;base64,${audio_base64}`;
+      playAudioUrl(audioUrl, 'Voice Preview');
     } catch (err) {
       console.error('Preview error:', err);
     }

@@ -9,7 +9,7 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from api.websocket import ws_manager
-from models.schemas import RadioEpisode
+from models.schemas import RadioCreateBody, RadioEpisode
 from services.radio_engine import radio_engine
 from services.spotify import spotify_service
 
@@ -19,16 +19,11 @@ router = APIRouter(prefix="/api/radio", tags=["radio"])
 _episodes: Dict[str, RadioEpisode] = {}
 
 
-@router.post("/create")
-async def create_episode(
-    playlist_id: str,
-    access_token: str,
-    voice_description: str = "A warm, friendly radio DJ host",
-    voice: str = "Chloe",
-) -> RadioEpisode:
+@router.post("/create", response_model=RadioEpisode)
+async def create_episode(body: RadioCreateBody) -> RadioEpisode:
     """Create a radio episode from a Spotify playlist."""
     try:
-        tracks = spotify_service.get_playlist_tracks(access_token, playlist_id)
+        tracks = spotify_service.get_playlist_tracks(body.access_token, body.playlist_id)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Spotify error: {exc}")
 
@@ -36,14 +31,14 @@ async def create_episode(
         raise HTTPException(status_code=404, detail="Playlist has no tracks")
 
     # Derive playlist name (first track's album as fallback)
-    playlist_name = f"Playlist-{playlist_id[:8]}"
+    playlist_name = f"Playlist-{body.playlist_id[:8]}"
 
     try:
         episode = await radio_engine.create_radio_episode(
             playlist_name=playlist_name,
             tracks=tracks,
-            voice_description=voice_description,
-            voice=voice,
+            voice_description=body.voice_description,
+            voice=body.voice,
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Radio engine error: {exc}")

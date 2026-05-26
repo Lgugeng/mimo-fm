@@ -1,7 +1,7 @@
 import { apiFetch, apiUpload } from './client';
 import type { TTSRequest, VoiceCloneRequest, VoiceDesignRequest, Voice } from '../types';
 
-export async function synthesizeSpeech(request: TTSRequest): Promise<{ audio_url: string }> {
+export async function synthesizeSpeech(request: { text: string; voice_description?: string; voice?: string; audio_format?: string }): Promise<{ audio_base64: string; format: string }> {
   return apiFetch('/tts/synthesize', {
     method: 'POST',
     body: JSON.stringify(request),
