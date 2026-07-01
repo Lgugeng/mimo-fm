@@ -78,7 +78,7 @@ class PlaylistInfo(BaseModel):
 class RadioCreateBody(BaseModel):
     """Request body for creating a radio episode."""
     playlist_id: str
-    access_token: str
+    # access_token removed - now passed via Authorization header
     voice_description: str = "A warm, friendly radio DJ host"
     voice: str = "Chloe"
 

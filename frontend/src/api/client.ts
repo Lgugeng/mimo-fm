@@ -1,12 +1,32 @@
 const BASE = '/api';
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(path: string, token?: string, options: RequestInit = {}): Promise<T> {
+  const headers = { 
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers 
+  };
+  
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers,
     ...options,
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(`API error ${res.status}: ${error.message || res.statusText}`);
+  }
+  
   return res.json();
+}
+
+// Legacy function that only takes path (deprecated, use apiFetch with token)
+export async function apiGet<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return apiFetch<T>(path, undefined, options);
+}
+
+export async function apiPost<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return apiFetch<T>(path, token, { method: 'POST', body: JSON.stringify(body) });
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {

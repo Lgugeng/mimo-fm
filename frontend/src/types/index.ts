@@ -64,28 +64,27 @@ export interface SpotifyPlaylist {
 export interface RadioEpisode {
   id: string;
   title: string;
-  description: string;
-  tracks: RadioTrack[];
-  dj_narration: NarrationSegment[];
+  playlist_name: string;  // Aligned with backend
+  segments: RadioSegment[];  // Replaced tracks/dj_narration to match backend
+  total_duration_ms: number;  // Matched field name
+  status: 'ready' | 'generating' | 'pending';  // Aligned with backend
+}
+
+export interface RadioSegment {
+  type: 'music' | 'narration';  // From backend schema
+  title?: string;
+  script?: string;
+  audio_base64?: string;  // Backend uses base64 directly
   duration_ms: number;
-  created_at: string;
-  status: 'creating' | 'ready' | 'playing';
+  track?: SpotifyTrack;  // Only for music segments
 }
 
 export interface RadioTrack {
+  // Deprecated - use RadioSegment with type='music' instead
   track: SpotifyTrack;
   narration_before?: string;
   narration_after?: string;
   narration_audio_url?: string;
-}
-
-export interface NarrationSegment {
-  id: string;
-  text: string;
-  audio_url?: string;
-  position: 'intro' | 'before_track' | 'after_track' | 'outro';
-  track_id?: string;
-  timestamp_ms: number;
 }
 
 export interface RadioCreateRequest {

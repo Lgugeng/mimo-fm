@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List
 
+import httpx
 from openai import AsyncOpenAI
 
 from config import settings
@@ -15,9 +16,11 @@ class MiMoLLMService:
     """Wrapper around the MiMo chat-completions API (OpenAI-compatible)."""
 
     def __init__(self) -> None:
+        # Add timeout configuration for production reliability
         self.client = AsyncOpenAI(
             api_key=settings.MIMO_API_KEY,
             base_url=settings.MIMO_BASE_URL,
+            timeout=httpx.Timeout(connect=5.0, read=60.0, write=60.0, pool=10.0),
         )
 
     # ── helpers ──────────────────────────────────────────────────────────
