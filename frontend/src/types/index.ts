@@ -89,7 +89,7 @@ export interface RadioTrack {
 
 export interface RadioCreateRequest {
   playlist_id: string;
-  access_token: string;
+  // access_token removed - now passed via Authorization header in fetch
   voice_description?: string;
   voice?: string;
 }

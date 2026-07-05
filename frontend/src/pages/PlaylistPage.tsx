@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { Link2, Loader2, ListMusic, Radio } from 'lucide-react';
 import { getPlaylists, getSpotifyAuthUrl } from '../api/spotify';
-import { createRadio } from '../api/radio';
+// createRadio removed - using apiFetch with Authorization header now
 import PlaylistCard from '../components/PlaylistCard';
 import VoiceSelector from '../components/VoiceSelector';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../api/client';
+import type { RadioEpisode } from '../types';
 
 export default function PlaylistPage() {
   const navigate = useNavigate();
@@ -35,11 +37,14 @@ export default function PlaylistPage() {
     if (!selectedPlaylist) return;
     setIsCreating(true);
     try {
-      const episode = await createRadio({
-        playlist_id: selectedPlaylist,
-        access_token: spotifyToken,
-        voice_description: `A ${selectedVoice} radio DJ host`,
-        voice: selectedVoice,
+      // access_token removed - now passed via Authorization Header
+      const episode: RadioEpisode = await apiFetch('/radio/create', undefined, {
+        method: 'POST',
+        body: JSON.stringify({
+          playlist_id: selectedPlaylist,
+          voice_description: `A ${selectedVoice} radio DJ host`,
+          voice: selectedVoice,
+        }),
       });
       navigate(`/radio/${episode.id}`);
     } catch (err) {
