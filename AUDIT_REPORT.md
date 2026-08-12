@@ -1,81 +1,166 @@
 # MiMo FM 代码审计报告
 
-**审计日期:** Sunday, July 05, 2026  
-**仓库:** https://github.com/Lgugeng/mimo-fm  
-**审查状态:** 增量审查 — 无新提交（与远程同步）  
-**技术栈:** Backend (FastAPI/Python 3.13), Frontend (React/TypeScript/Vite)
+**审计日期:** Wednesday, August 12, 2026
+**仓库:** https://github.com/Lgugeng/mimo-fm
+**审查状态:** 增量审查 — 无新提交（与远程同步）
+**技术栈:** Backend (FastAPI/Python 3.11), Frontend (React/TypeScript/Vite)
+**提交 HEAD:** `92c4e36` — `fix: sync frontend token handling + clean up unused imports`
 
 ---
 
 ## 1. 审计结果总览
 
-| 风险等级 | 数量 | 状态     |
-|---------|------|----------|
-| 高危    | 0    | ✅ 已修复 |
-| 中危    | 3    | ⚠️ 待处理 |
-| 低危    | 2    | 💡 建议优化 |
+| 风险等级 | 数量 | 变化       |
+|---------|------|------------|
+| 高危    | 3    | ⬆️ +1      |
+| 中危    | 5    | ⬆️ +2      |
+| 低危    | 4    | ⬆️ +2      |
 
 ---
 
 ## 2. 本次审查状态
 
-**本地提交数:** 0（与远程同步，无新变更）  
-**上次修复验证通过：**
+**本地提交数:** 0（与远程同步，无新变更）
 
-- ✅ Token 加密存储 (db_models.py 使用 Fernet)
-- ✅ 环境变量强制校验 (config.py 所有敏感字段用 `Field(..., min_length=1)`)
-- ✅ WebSocket 基础 token 认证 (radio.py:100-102)
-- ✅ Bearer token 通过 Authorization Header 传递
-- ✅ API timeout 配置 (mimo_llm.py:23)
-- ✅ 数据库连接池参数配置 (database.py:8-14)
+**上次修复验证通过：**
+- ✅ Token 加密函数已实现 (`db_models.py` Fernet)
+- ✅ 环境变量强制校验 (`config.py` `Field(..., min_length=1)`)
+- ✅ WebSocket 基础 token 认证 (`radio.py:100-102`)
+- ✅ Bearer token 通过 Authorization Header 传递 (create_episode)
+- ✅ API timeout 配置 (`mimo_llm.py:23`)
+- ✅ 数据库连接池参数配置 (`database.py:8-14`)
+- ✅ 前端 `RadioCreateRequest` 删除了 `access_token` 字段
+- ✅ `PlaylistPage.tsx` 改用 `apiFetch` 而非旧式调用
+
+**本次新发现:** 上轮修复后出现了新的 API 契约不一致问题 — 前端 `PlaylistPage.tsx` 调用 `createRadio` 时 token 参数传了 `undefined`，后端要求 `Authorization: Header(...)`，导致实际调用必然返回 401。
 
 ---
 
 ## 3. 详细问题清单
 
-### 3.1 [中危] CORS 配置仍偏向开发环境
+### 3.1 [高危] createRadio 调用未传递 Token — API 契约不一致
+
+**文件位置:** `frontend/src/pages/PlaylistPage.tsx:41`
+
+```typescript
+// 当前代码 — token 参数传了 undefined
+const episode = await apiFetch('/radio/create', undefined, {
+    method: 'POST',
+    body: JSON.stringify({ playlist_id: selectedPlaylist, ... }),
+});
+```
+
+**问题:** 后端 `radio.py:38` 要求 `authorization: str = Header(...)`（必填），前端传 `undefined` 导致不发送 Authorization Header，请求必然 401 失败。
+
+**整改:**
+
+```typescript
+const spotifyToken = localStorage.getItem('spotify_access_token') || '';
+const episode = await apiFetch('/radio/create', spotifyToken, {
+    method: 'POST',
+    body: JSON.stringify({ playlist_id: selectedPlaylist, ... }),
+});
+```
+
+### 3.2 [高危] Spotify OAuth Token 明文存储在 localStorage
+
+**文件位置:** `frontend/src/pages/CallbackPage.tsx:24-29`
+
+```typescript
+localStorage.setItem('spotify_access_token', data.access_token);
+localStorage.setItem('spotify_refresh_token', data.refresh_token);
+```
+
+**问题:** localStorage 中的 token 可被 XSS 直接读取。虽然已实现 `encrypt_token()/decrypt_token()` 在后端，但前端存储层面没有加密保护。refresh_token 尤其敏感 — 可长期替代 access_token。
+
+**整改:**
+- 短期: 使用 httpOnly cookie 而非 localStorage（需要后端配合设置 Set-Cookie）
+- 中期: 实现前端 token 加密存储（如使用 SubtleCrypto API）
+- 必须: 确保 `expires_in` 被跟踪，过期后刷新 token 而非长期持有
+
+### 3.3 [高危] Spotify Token 通过 URL 参数传递（日志泄露风险）
+
+**文件位置:**
+- `frontend/src/api/spotify.ts:9` — `?access_token=${encodeURIComponent(accessToken)}`
+- `frontend/src/api/spotify.ts:13` — 同上
+- `backend/api/spotify.py:35` — `access_token: str = Query(...)`
+- `backend/api/spotify.py:44` — `access_token: str = Query(...)`
+
+**问题:** Token 出现在 URL 中会被记录在：Nginx access log、浏览器历史、代理服务器日志。这与上轮修复 radio 端口的方向相反。
+
+**整改 (前端):**
+```typescript
+export async function getPlaylists(accessToken: string): Promise<SpotifyPlaylist[]> {
+  return apiFetch('/spotify/playlists', accessToken); // token → Authorization Header
+}
+```
+
+**整改 (后端):**
+```python
+@router.get("/playlists")
+async def get_playlists(authorization: str = Header(...)) -> list[dict]:
+    token = authorization.replace("Bearer ", "", 1)
+    return spotify_service.get_user_playlists(token)
+```
+
+### 3.4 [中危] CORS 配置仍偏向开发环境
 
 **文件位置:** `backend/main.py:27-33`
 
-当前 CORS 配置在生产环境存在 CSRF 风险：
 ```python
-allow_origins=["http://localhost:3000", "http://localhost:5173"],
-allow_credentials=True,
-```
-
-**风险:** 生产环境允许 localhost，且 `allow_credentials=True` + 宽松 origin 组合易受 CSRF 攻击。
-
-**整改建议:**
-- 区分开发/生产环境的 CORS 配置
-- 生产环境限制具体域名并禁用 credentials 或使用 CSRF token
-
-**修改示例:**
-```python
-import os
-
-is_prod = os.getenv("DEBUG", "true").lower() != "true"
-
-origins = (
-    [os.getenv("FRONTEND_URL")] if is_prod 
-    else ["http://localhost:3000", "http://localhost:5173"]
-)
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=not is_prod,  # 生产环境考虑改为 False + CSRF token
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 ```
 
----
+**问题:** `allow_credentials=True` + 宽松 origin 组合 = CSRF 风险。生产环境只有 localhost 不满足实际部署需求。
 
-### 3.2 [中危] WebSocket 缺少用户所有权验证
+**整改:**
+```python
+is_prod = settings.DEBUG is False
+origins = [os.getenv("FRONTEND_URL", "")] if is_prod else ["http://localhost:3000", "http://localhost:5173"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=not is_prod,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+### 3.5 [中危] Chat / TTS API 无身份认证
+
+**文件位置:**
+- `backend/api/chat.py:15-47` — 无认证
+- `backend/api/tts.py:18-84` — 无认证
+
+**问题:** 任何人都可以调用 Chat API 消耗 LLM 配额，或调用 TTS 生成语音。没有 API Key 校验、无用户身份绑定、无速率限制。
+
+**整改:** 添加统一认证依赖：
+```python
+from fastapi import Depends, Header, HTTPException
+
+async def get_api_key(authorization: str = Header(None)) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing API key")
+    token = authorization[7:]
+    # validate token...
+    return token
+
+@router.post("/sync", response_model=ChatResponse)
+async def chat_sync(req: ChatRequest, _: str = Depends(get_api_key)):
+    ...
+```
+
+### 3.6 [中危] WebSocket 用户所有权验证 TODO 未完成
 
 **文件位置:** `backend/api/radio.py:110-114`
 
-虽然已添加 token 验证，但 TODO 注释显示尚未实现用户所有权检查：
 ```python
 # TODO: Add user ownership check when episodes are associated with users
 # user = await verify_user_token(token)
@@ -84,151 +169,153 @@ app.add_middleware(
 #     return
 ```
 
-**风险:** 用户 B 可以访问并流式传输用户 A 创建的 episode。
+**问题:** 知道 episode_id 和任意有效 token（≥10字符）即可流式播放他人的 episode。`verify_user_token` 函数也是 stub（仅检查长度）。
 
-**整改建议:**
-1. 在 `Episode` model 中存储 `user_id`（已完成，见 db_models.py:74-87）
-2. 实现 `verify_user_owns_episode()` 函数
-3. WebSocket 连接时校验 ownership
+**整改:**
+1. 实现真正的 token 校验（JWT 解码或 Spotify 用户信息 API）
+2. 将 episode 存储关联 user_id
+3. WebSocket 连接时校验 `episode.user_id == current_user.id`
 
----
+### 3.7 [中危] RadioPage 使用硬编码 Mock Data
 
-### 3.3 [中危] 异常处理分类不完整
+**文件位置:** `frontend/src/pages/RadioPage.tsx:14-28, 55`
 
-**文件位置:** 
-- `backend/api/chat.py:26-27`
-- `backend/services/radio_engine.py:156-157`
-
-部分位置的错误捕获仍过于宽泛：
-```python
-except Exception as exc:
-    raise HTTPException(status_code=502, detail=str(exc))
+```typescript
+const mockEpisode: RadioEpisode = { /* 硬编码数据 */ };
+// ...
+const episode = mockEpisode; // 始终使用 mock
 ```
 
-**风险:** 所有异常都返回相同状态码，难以区分认证失败、权限拒绝、资源不存在等场景。
+**问题:**
+- `handleStartRadio` 用 `setTimeout` 模拟加载，不调用真实 API
+- `mockEpisode` 的字段结构（`tracks[]`、`dj_narration[]`）与后端返回的 `RadioEpisode`（`segments[]`）不一致
+- 旧字段 `description`、`created_at` 不在后端 schema 中
 
-**整改建议:**
-分类捕获异常，返回正确的 HTTP 状态码：
-- 401: Token 无效/过期
-- 403: 无访问权限  
-- 404: 资源不存在
-- 500: 内部服务器错误（不暴露详情）
+**整改:** 用 `useQuery` 从 `/api/radio/{id}` 获取真实数据，移除 mockEpisode。
 
-**修改示例 (chat.py):**
+### 3.8 [中危] `encrypt_token()` / `decrypt_token()` 已定义但未调用
+
+**文件位置:** `backend/models/db_models.py:30-41`
+
+**问题:** Fernet 加密函数已定义，但 `User` 表的 `access_token` / `refresh_token` 写入/读取路径中从未调用这些函数。Token 仍然明文存储在数据库。
+
+**验证命令:** `grep -rn "encrypt_token\|decrypt_token" backend/ --include="*.py"` 仅返回定义行。
+
+**整改:** 在保存 User 时调用 `encrypt_token()`，读取时调用 `decrypt_token()`。或改用 SQLAlchemy `TypeDecorator` 实现透明加解密。
+
+### 3.9 [低危] 无速率限制
+
+**文件位置:** 全局
+
+**问题:** 所有 API 端点无速率限制。Chat API 可被频繁调用消耗 LLM 配额，TTS 可被用于批量生成。
+
+**整改:** 添加 `slowapi` 或 `fastapi-limiter`:
 ```python
-from pydantic import ValidationError
-import httpx
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
 
 @router.post("/sync", response_model=ChatResponse)
-async def chat_sync(req: ChatRequest) -> ChatResponse:
-    try:
-        result = await llm_service.chat(...)
-        return ChatResponse(**result)
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 401:
-            raise HTTPException(status_code=401, detail="API key invalid")
-        raise HTTPException(status_code=502, detail="External service error")
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
-    except Exception as exc:
-        import logging
-        logging.error(f"Unexpected error: {exc}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+@limiter.limit("10/minute")
+async def chat_sync(req: ChatRequest):
+    ...
 ```
 
----
+### 3.10 [低危] In-memory `_episodes` 存储未持久化
 
-### 3.4 [低危] In-memory `_episodes` 存储未持久化
-
-**文件位置:** `backend/api/radio.py:21-22`
+**文件位置:** `backend/api/radio.py:22`
 
 ```python
-# In-memory episode store (replace with DB in production)
 _episodes: Dict[str, RadioEpisode] = {}
 ```
 
-**建议:** 已在 TODO 中标注，但在生产环境部署前需要替换为数据库存储。Episodes 已有对应的 `db_models.Episode` 模型但尚未使用。
+**问题:** 服务重启后所有 episode 丢失。`db_models.Episode` 已定义但未被使用。
 
----
+**整改:** 使用 `Episode` 模型替换内存字典，或将 episode 存入 Redis 作为缓存层。
 
-### 3.5 [低危] Frontend types 包含冗余字段
+### 3.11 [低危] Nginx `proxy_read_timeout` 过长
 
-**文件位置:** `frontend/src/types/index.ts:92`
+**文件位置:** `nginx.conf:28`
 
-```typescript
-export interface RadioCreateRequest {
-  playlist_id: string;
-  access_token: string;  // Deprecated - now passed via Authorization header
-  voice_description?: string;
-  voice?: string;
-}
+```nginx
+proxy_read_timeout 86400s;  # 24小时
 ```
 
-**建议:** 删除 `access_token` 字段，避免前端误用。后端已通过 Header 传递 token (radio.py:38-45)。
+**问题:** 过长 timeout 可能导致僵尸连接占用后端资源。
+
+**整改:** `proxy_read_timeout 3600s;`（1小时对于 SSE/WS 足够）
+
+### 3.12 [低危] SQLite 默认路径与 Docker Volume 不一致
+
+**文件位置:**
+- `backend/config.py:18`: `DATABASE_URL: str = "sqlite+aiosqlite:///./mimofm.db"`
+- `docker-compose.yml:13`: `volumes: - ./data:/app/data`
+
+**问题:** 数据库文件 `mimofm.db` 创建在 `/app/mimofm.db`（WORKDIR），未持久化到挂载卷 `/app/data/`。容器重建后数据丢失。
+
+**整改:** `DATABASE_URL=sqlite+aiosqlite:///./data/mimofm.db`
 
 ---
 
-## 4. 已验证的安全改进 (Previous Fixes Verified)
+## 4. 安全架构总结
 
-以下问题在上次审计中提出，已在提交 `d021039` 和 `45cc69f` 中修复并验证：
+```
+认证层:
+  ❌ Chat/TTS 无认证
+  ⚠️  Radio: Header 传递 (正确) 但前端调用缺 token
+  ⚠️  Spotify: Query 参数传递 (不安全)
+  ⚠️  WebSocket: 仅长度校验 (stub)
 
-| Issue | Fix Verification |
-|-------|------------------|
-| Token 明文存储 | ✅ `db_models.py` 添加 `encrypt_token()` / `decrypt_token()` 使用 Fernet |
-| 环境变量未校验 | ✅ `config.py` 所有敏感字段用 `Field(..., min_length=1)` + validator |
-| WebSocket 无认证 | ✅ `radio.py:100-102` 添加 token 验证，关闭无效连接 |
-| Token 传递方式 | ✅ `create_episode()` 从 Authorization Header 提取 Bearer token |
-| API timeout | ✅ `mimo_llm.py:23` 配置 httpx Timeout (connect=5s, read=60s) |
-| DB connection pool | ✅ `database.py:8-14` 显式配置 pool_size, max_overflow, pool_pre_ping |
+数据层:
+  ⚠️  Token 加密函数存在但未调用 → 明文存储
+  ❌  Episode 内存存储 → 重启丢失
 
----
+传输层:
+  ✅  Nginx 反向代理配置正确
+  ✅  OpenAI client 有 timeout
+  ✅  DB 连接池参数已配置
 
-## 5. 工程化建议
-
-### 前后端类型同步
-使用 `openapi-typescript` 自动从 FastAPI OpenAPI schema 生成 TypeScript 定义：
-
-```bash
-# Backend
-uvicorn main:app --port 8000 &
-curl http://localhost:8000/openapi.json > openapi.json
-
-# Frontend
-npx @hey-api/openapi-ts -i openapi.json -o src/api/
+配置层:
+  ✅  敏感环境变量 Field(..., min_length=1) 强制校验
+  ⚠️  CORS 仅 localhost
+  ❌  无速率限制
 ```
 
-### 速率限制
-建议添加 `fastapi-limiter` 防止 API 滥用：
+---
 
-```python
-from fastapi_limiter import FastAPILimiter
-from fastapi_limiter.depends import RateLimiter
+## 5. 整改优先级
 
-@app.on_event("startup")
-async def startup():
-    await FastAPILimit.init(redis.Redis())
-
-@router.post("/create", dependencies=[Depends(RateLimiter(max_calls=10, period=60))])
-```
-
-### 日志与监控
-- 添加结构化日志 (structlog)
-- 实现健康检查 endpoint (`/health` 已存在 ✓)
-- 考虑集成 sentry 或类似错误追踪服务
+| 优先级 | 问题 | 影响面 |
+|--------|------|--------|
+| P0 | createRadio 调用未传 token (3.1) | 功能完全不可用 |
+| P0 | Spotify token URL 泄露 (3.3) | 安全风险 |
+| P1 | Chat/TTS 无认证 (3.5) | 配额消耗 |
+| P1 | encrypt_token 未调用 (3.8) | 安全合规 |
+| P1 | localStorage 明文 token (3.2) | XSS 风险 |
+| P2 | CORS 生产配置 (3.4) | 部署就绪 |
+| P2 | WebSocket 所有权 (3.6) | 数据隔离 |
+| P3 | Mock data (3.7) | 功能完整 |
+| P3 | 速率限制 (3.9) | 防滥用 |
+| P3 | 持久化存储 (3.10) | 数据可靠性 |
 
 ---
 
-## 6. 总结
+## 6. 已验证修复 (Previous Fixes)
 
-**整体评估:** ⭐⭐⭐⭐ (4/5)  
-
-项目安全状况良好，上次审计的关键高危问题已全部修复。遗留的中低危问题不影响核心功能的安全，建议在后续 sprint 中逐步完善。
-
-**发布建议:** 
-- ✅ 可以进行 UAT/测试环境部署
-- ⚠️ 生产环境部署前需解决 CORS 配置和 WebSocket 所有权验证
+| Issue | 状态 | 验证方式 |
+|-------|------|----------|
+| Token 加密函数实现 | ✅ | `db_models.py:30-41` Fernet |
+| 环境变量强制校验 | ✅ | `config.py:13,19-20` Field(...) |
+| WebSocket 基础认证 | ✅ | `radio.py:100-102` 长度校验 |
+| Bearer Header 传递 | ✅ | `radio.py:38` Header(...) |
+| API timeout | ✅ | `mimo_llm.py:23` httpx.Timeout |
+| DB 连接池 | ✅ | `database.py:8-14` pool_size=10 |
+| 前端 API 契约更新 | ✅ | `types/index.ts` 移除 access_token |
+| 异常处理改进 | ✅ | `radio.py` 区分 401/403/500 |
 
 ---
 
-*报告生成工具：Hermes Agent - MiniProgram Code Audit Skill*  
-*下一次审计提醒: 当有新提交时自动触发*
+*报告生成: Hermes Agent - miniprogram-code-audit v1.0*
+*下次审计: 新提交触发或定时检查*
