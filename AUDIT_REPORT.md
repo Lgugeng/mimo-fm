@@ -1,12 +1,13 @@
-# MiMo FM 代码审计报告 — 2026-08-13 增量审查
+# MiMo FM 代码审计报告 — 2026-08-14 增量审查
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Spotify + MiMo LLM/TTS)
-- **审计日期**: 2026-08-13
+- **审计日期**: 2026-08-14
 - **审计范围**: 全维度代码审计（后端 FastAPI + 前端 React/TS + 配置）
 - **技术栈**: Python 3.11/FastAPI/SQLAlchemy + React 18/TypeScript/Vite/Tailwind + Docker/Nginx + MiMo AI API + Spotify API
-- **提交 HEAD**: `66cc33d` — `docs: update audit report — 2026-08-12 incremental review`
+- **提交 HEAD**: `81b17a6` — `docs: update audit report — 2026-08-13 incremental review + verify previous fixes`
 - **审查状态**: 与远程同步（无新提交），基于本地副本审计
+- **审查模式**: 增量审查 — 验证上轮修复 + 发现新问题
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 |
@@ -15,7 +16,9 @@
 | 中危    | 7    | 39%  |
 | 低危    | 8    | 44%  |
 
-## 3. 已验证修复（来自上轮审计）
+> ⚠️ 自上次审计（2026-08-13）以来代码无变更，所有问题保持上轮状态。
+
+## 3. 已验证修复（来自早期审计）
 
 | # | 问题 | 状态 |
 |---|------|------|
@@ -33,30 +36,24 @@
 ## 4. 详细问题清单
 
 ### 4.1 [高危] `createRadio` 调用未传 token — 功能完全不可用
-- **文件位置**: `frontend/src/pages/PlaylistPage.tsx:41`、`frontend/src/api/radio.ts:4-9`
-- **问题描述**: `apiFetch('/radio/create', undefined, {...})` 第二个参数为 `undefined`，后端要求 `Authorization: Bearer ...` Header，必然返回 401。上轮审计报告后仍未修复。
+- **文件位置**: `frontend/src/pages/PlaylistPage.tsx:41`
+- **问题描述**: `apiFetch('/radio/create', undefined, {...})` 第二个参数为 `undefined`，后端要求 `Authorization: Bearer ***` Header，必然返回 401。上轮审计报告后仍未修复。注释说"access_token removed - now passed via Authorization Header"但实际代码并未实现。
 - **风险等级**: 高
-- **影响**: 创建 radio episode 功能完全不可用
+- **影响**: 创建 radio episode 核心功能完全不可用
 - **整改建议**:
 
 ```tsx
 // frontend/src/pages/PlaylistPage.tsx:41
 const spotifyToken = localStorage.getItem('spotify_access_token') || '';
 // ...
-const episode = await apiFetch('/radio/create', spotifyToken, {
+const episode: RadioEpisode = await apiFetch('/radio/create', spotifyToken, {
   method: 'POST',
-  body: JSON.stringify({...}),
+  body: JSON.stringify({
+    playlist_id: selectedPlaylist,
+    voice_description: `A ${selectedVoice} radio DJ host`,
+    voice: selectedVoice,
+  }),
 });
-```
-
-```ts
-// frontend/src/api/radio.ts:4-9
-export async function createRadio(request: RadioCreateRequest, token: string): Promise<RadioEpisode> {
-  return apiFetch('/radio/create', token, {
-    method: 'POST',
-    body: JSON.stringify(request),
-  });
-}
 ```
 
 ### 4.2 [高危] Spotify Token 通过 URL 参数传递 — 日志泄露风险
@@ -101,7 +98,7 @@ export async function getPlaylists(accessToken: string): Promise<SpotifyPlaylist
 
 ### 4.6 [中危] `_episodes` 内存字典未持久化
 - **文件位置**: `backend/api/radio.py:22`
-- **问题描述**: `Dict[str, RadioEpisode] = {}` 在服务重启后丢失所有 episode 数据。标注"replace with DB in production"但未实施。
+- **问题描述**: `Dict[str, RadioEpisode] = {}` 在服务重启后丢失所有 episode 数据。标注"replace with DB in production"但未实施。Episode ORM 模型已存在但未使用。
 - **风险等级**: 中
 - **整改建议**: 将 episode 数据持久化到 Episode 表（已定义 ORM 模型但未使用）。
 
@@ -125,56 +122,54 @@ export async function getPlaylists(accessToken: string): Promise<SpotifyPlaylist
 
 ```python
 # backend/services/mimo_tts.py
-from config import settings
-import httpx
-
-class MiMoTTSService:
-    def __init__(self) -> None:
-        self.client = AsyncOpenAI(
-            api_key=settings.MIMO_API_KEY,
-            base_url=settings.MIMO_BASE_URL,
-            timeout=httpx.Timeout(connect=5.0, read=120.0, write=60.0, pool=10.0),  # TTS 读超时更长
-        )
+self.client = AsyncOpenAI(
+    api_key=settings.MIMO_API_KEY,
+    base_url=settings.MIMO_BASE_URL,
+    timeout=httpx.Timeout(connect=5.0, read=120.0, write=60.0, pool=10.0),
+)
 ```
 
-### 5. 低危问题
+## 5. 低危问题
 
-#### 5.1 Chat/TTS 端点统一返回 502
+### 5.1 Chat/TTS 端点统一返回 502
 - `backend/api/chat.py:27` — `HTTPException(status_code=502, detail=str(exc))`
 - `backend/api/tts.py:33,48,66,84` — 全部返回 502
 - **建议**: 区分 429（限流）、503（服务不可用）、500（内部错误），且不要在 detail 中暴露内部异常信息（`str(exc)` 可能泄露细节）。
 
-#### 5.2 Chat 端点无输入校验/注入防护
+### 5.2 Chat 端点无输入校验/注入防护
 - `backend/api/chat.py` — `ChatRequest` 允许任意 content，存在 prompt injection 风险。
 - **建议**: 限制 messages 长度和数量，过滤可疑系统提示注入。
 
-#### 5.3 Nginx 缺少 HTTPS 配置
+### 5.3 Nginx 缺少 HTTPS 配置
 - `nginx.conf` 仅监听 80 端口，无 SSL/TLS。
 - **建议**: 生产环境添加 SSL 或在前端放置反向代理/Terminator 处理 HTTPS。
 
-#### 5.4 Dockerfile 未使用非 root 用户
+### 5.4 Dockerfile 未使用非 root 用户
 - `Dockerfile.backend:1` — `FROM python:3.11-slim` 以 root 运行
 - **建议**: 添加 `RUN useradd -m appuser && USER appuser`
 
-#### 5.5 Vite WebSocket 代理路径不匹配
+### 5.5 Vite WebSocket 代理路径不匹配
 - `vite.config.ts:18-21` 配置 `/ws` 代理，但实际 WebSocket 路径为 `/api/radio/{id}/stream`，已包含在 `/api` 代理中。`/ws` 代理是冗余的。
 
-#### 5.6 Spotify OAuth callback 返回 token 给前端
+### 5.6 Spotify OAuth callback 返回 token 给前端
 - `backend/api/spotify.py:24-29` — callback 直接返回 `access_token` 和 `refresh_token` 到前端
 - **建议**: refresh_token 不应返回给前端，应在服务端安全存储并使用。
 
-#### 5.7 `settings.DEBUG` 与 `.env.example` 不一致
+### 5.7 `settings.DEBUG` 与 `.env.example` 不一致
 - `.env.example:18` 写 `DEBUG=true`，但 `config.py:22` 默认 `False`。如果用户复制 .env.example 到 .env，DEBUG 会覆盖为 true。
 - **建议**: `.env.example` 改为 `DEBUG=false` 并添加注释说明。
 
-#### 5.8 `SPOTIFY_REDIRECT_URI` 硬编码 localhost
+### 5.8 `SPOTIFY_REDIRECT_URI` 硬编码 localhost
 - `backend/config.py:17` — `http://localhost:8000/api/spotify/callback`
 - **建议**: 生产环境通过环境变量覆盖。
 
 ## 6. 整体评估
 
+### 代码无变更确认
+自 2026-08-13 上次审计以来，代码仓库无任何新提交（仅 AUDIT_REPORT.md 更新）。所有问题保持上轮状态。
+
 ### 上轮修复进展
-上轮审计的 10 项修复均已落地，代码质量有明显提升。环境校验、连接池、timeout、CORS 配置等基础设施层面已到位。
+早期审计的 10 项修复均已落地，代码质量有明显提升。环境校验、连接池、timeout、CORS 配置等基础设施层面已到位。
 
 ### 当前核心风险
 1. **功能阻断** (`4.1`): `createRadio` 不传 token 导致核心流程完全不通，这是 P0 级功能缺陷
@@ -195,7 +190,7 @@ class MiMoTTSService:
 
 ## 7. 后续开发规范建议
 1. **API 契约同步流程**: 后端 schema 变更后，grep 所有前端调用点并更新。建议使用 openapi-typescript 自动生成前端类型。
-2. **Token 传递规范**: 统一使用 `Authorization: Bearer` Header，禁止 URL query/body 传递。
+2. **Token 传递规范**: 统一使用 `Authorization: Bearer ***` Header，禁止 URL query/body 传递。
 3. **加密闭环验证**: 定义加密函数后，必须编写测试用例验证 encrypt→decrypt 往返正确，并在 CRUD 层确认调用。
 4. **Mock 数据隔离**: 使用条件编译或环境变量区分 mock/production 模式，禁止硬编码 mock 保留在生产代码中。
 5. **错误处理分层**: 区分 HTTP 语义状态码（400/401/403/404/429/500/503），避免统一 502。
