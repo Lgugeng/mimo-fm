@@ -2,18 +2,18 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-08-17
+- **审计日期**: 2026-08-18
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — 自上次审计（2026-08-14）无代码变更
-- **Git HEAD**: `512f4af` docs: update audit report — 2026-08-14 incremental review
+- **审查状态**: 增量审查 — `git fetch` 确认自 2026-08-14 起远程无新提交，代码无变更；15 项问题逐一复验全部仍开放
+- **Git HEAD**: `13dab90`（含 08-17 报告，本次提交前本地领先 origin 1 个 commit）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 说明 |
 |---------|------|------|
 | 高危    | 6    | 数据泄露、认证缺陷、Token 明文存储 |
 | 中危    | 7    | 错误处理、CORS、内存存储、超时缺失 |
-| 低危    | 5    | 代码风格、类型不一致、工程化细节 |
+| 低危    | 7    | 代码风格、类型不一致、工程化细节（+2 新发现） |
 
 ## 3. 详细问题清单
 
@@ -148,22 +148,46 @@ RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 ```
 
+### 3.16 [低危] `.env.example` 默认 `DEBUG=true`（新增）
+- **文件位置**: `.env.example:20`
+- **问题描述**: 示例配置默认 `DEBUG=true`。若生产环境直接复制该文件且未修改，FastAPI 将在异常时返回详细堆栈/调试信息，泄露内部路径与逻辑。`config.py` 中 `DEBUG: bool = False` 的默认值是正确的，但示例文件的引导方向相反。
+- **风险等级**: 低
+- **整改建议**: `.env.example` 改为 `DEBUG=false`，并注明"生产环境必须为 false"
+- **验证命令**: `grep -n "DEBUG" .env.example backend/config.py`
+
+### 3.17 [低危] nginx 无上传大小限制与限流（新增）
+- **文件位置**: `nginx.conf`
+- **问题描述**: `/api/` 反向代理未配置 `client_max_body_size`（`/tts/clone` 等上传接口可接收任意大小请求体，可被用于磁盘/内存耗尽攻击），且无 `limit_req`/`limit_conn` 限流。结合后端无限流中间件，整条链路对 API 滥用无防护。
+- **风险等级**: 低（与"无速率限制"中危项叠加后风险上升）
+- **整改建议**:
+```nginx
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
+server {
+    client_max_body_size 20m;   # 声音克隆上传上限
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+        proxy_pass http://backend:8000;
+    }
+}
+```
+
 ## 4. 已验证修复（与上次审计对比）
 
-上次审计（2026-08-14）发现的问题，本次验证状态：
+上次审计（2026-08-14）发现的问题，2026-08-18 复验状态（代码无变更，结论与 08-17 一致）：
 
 | # | 问题 | 状态 | 验证方法 |
 |---|------|------|----------|
 | 1 | CORS 仅 localhost | ⚠️ 仍为开发配置 | `main.py:29` |
-| 2 | 502 统一错误处理 | ⚠️ 部分修复（radio.py 改为 500），chat/tts/spotify 仍为 502 | grep 6处 502 |
-| 3 | `encrypt_token` 未调用 | ❌ 仍未调用 | grep 仅定义行 |
+| 2 | 502 统一错误处理 | ⚠️ 部分修复（radio.py 改为 500），chat/tts/spotify 仍为 502 | grep 9处 502 |
+| 3 | `encrypt_token` 未调用 | ❌ 仍未调用 | grep 仅定义行，零调用点 |
 | 4 | `create_episode` token 传递方式 | ✅ 已改为 Header | `radio.py:38` Bearer |
 | 5 | `RadioCreateBody` 移除 access_token | ✅ 已移除 | `schemas.py:81` |
 | 6 | `apiFetch` 支持 Bearer Header | ✅ 已支持 | `client.ts:6` |
-| 7 | WS ownership TODO | ❌ 仍注释 | `radio.py:110` |
-| 8 | DB 连接池配置 | ✅ 已配置 | `database.py:11-14` |
-| 9 | OpenAI timeout | ✅ LLM 已配 | `mimo_llm.py:23` |
-| 10 | SPOTIFY env 可选 | ⚠️ 空字符串默认值无校验 | `config.py:15-16` |
+| 7 | WS ownership TODO | ❌ 仍注释 | `radio.py:110-114` |
+| 8 | DB 连接池配置 | ✅ 已配置 | `database.py:11-14`（pool_size=10, max_overflow=20, pre_ping, recycle） |
+| 9 | OpenAI timeout | ⚠️ LLM 已配，TTS 仍缺 | `mimo_llm.py:23` vs `mimo_tts.py` 无 timeout |
+| 10 | SPOTIFY env 可选 | ⚠️ 空字符串默认值无校验 | `config.py:15-16`（功能可接受，但建议标注"未配置时相关接口不可用"） |
 
 ## 5. 整改优先级建议
 
@@ -182,3 +206,5 @@ USER appuser
 8. WS ownership 验证
 9. TTS timeout 配置
 10. 依赖锁定 + Docker 非 root
+11. `.env.example` DEBUG 默认值改为 false
+12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
