@@ -2,18 +2,20 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-08-18
+- **审计日期**: 2026-08-19
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — `git fetch` 确认自 2026-08-14 起远程无新提交，代码无变更；15 项问题逐一复验全部仍开放
-- **Git HEAD**: `13dab90`（含 08-17 报告，本次提交前本地领先 origin 1 个 commit）
+- **审查状态**: 增量审查 — `git fetch` 确认自 2026-07-05 起无任何代码提交（最后一次代码变更 `92c4e36`），与 08-18 审计时完全一致；17 项开放问题逐一 grep/sed 复验全部仍未修复；此前 5 项已验证修复保持有效
+- **Git HEAD**: 与 `origin/master` 同步（0 ahead / 0 behind）
 
 ## 2. 审计结果总览
-| 风险等级 | 数量 | 说明 |
-|---------|------|------|
-| 高危    | 6    | 数据泄露、认证缺陷、Token 明文存储 |
-| 中危    | 7    | 错误处理、CORS、内存存储、超时缺失 |
-| 低危    | 7    | 代码风格、类型不一致、工程化细节（+2 新发现） |
+| 风险等级 | 数量 | 占比 | 说明 |
+|---------|------|------|------|
+| 高危    | 6    | 35%  | 数据泄露、认证缺陷、Token 明文存储、P0 功能不可用 |
+| 中危    | 5    | 29%  | 错误处理、CORS、内存存储、超时缺失 |
+| 低危    | 6    | 35%  | 契约不一致、依赖锁定、Docker 非 root、工程化细节 |
+
+> 合计 17 项（与详细清单 3.1–3.17 一致）。08-18 报告总览表 6/7/7 为计数笔误，本次已更正。
 
 ## 3. 详细问题清单
 
@@ -71,8 +73,8 @@ async def get_playlists(authorization: str = Header(...)) -> list[dict]:
 - **整改建议**: 使用 `useQuery` 从 `/api/radio/{id}` 获取真实数据，移除 mockEpisode
 
 ### 3.7 [中危] 通用 502 错误处理掩盖真实问题
-- **文件位置**: `backend/api/chat.py:27` · `backend/api/spotify.py:40,49` · `backend/api/tts.py:33,48,66,84`
-- **问题描述**: 6 个 endpoint 将 `Exception` 统一转为 HTTP 502。无法区分认证失败（401）、权限拒绝（403）、上游超时（504）、参数错误（400）等。运维排查困难。
+- **文件位置**: `backend/api/chat.py:27` · `backend/api/radio.py:55` · `backend/api/spotify.py:40,49` · `backend/api/tts.py:33,48,66,84`
+- **问题描述**: 8 处 endpoint 将 `Exception` 统一转为 HTTP 502（含 `detail=str(exc)` 直接回显异常信息，可能泄露内部细节）。无法区分认证失败（401）、权限拒绝（403）、上游超时（504）、参数错误（400）等。运维排查困难。
 - **风险等级**: 中
 - **整改建议**: 分类捕获异常，返回正确 HTTP 状态码：
 ```python
@@ -174,20 +176,20 @@ server {
 
 ## 4. 已验证修复（与上次审计对比）
 
-上次审计（2026-08-14）发现的问题，2026-08-18 复验状态（代码无变更，结论与 08-17 一致）：
+上次审计（2026-08-14）发现的问题，2026-08-19 复验状态（代码自 07-05 起无变更，结论与 08-18 一致）：
 
 | # | 问题 | 状态 | 验证方法 |
 |---|------|------|----------|
 | 1 | CORS 仅 localhost | ⚠️ 仍为开发配置 | `main.py:29` |
-| 2 | 502 统一错误处理 | ⚠️ 部分修复（radio.py 改为 500），chat/tts/spotify 仍为 502 | grep 9处 502 |
+| 2 | 502 统一错误处理 | ⚠️ 部分修复（radio.py 改为 500），chat/tts/spotify 仍为 502 | grep 8处 502 |
 | 3 | `encrypt_token` 未调用 | ❌ 仍未调用 | grep 仅定义行，零调用点 |
 | 4 | `create_episode` token 传递方式 | ✅ 已改为 Header | `radio.py:38` Bearer |
-| 5 | `RadioCreateBody` 移除 access_token | ✅ 已移除 | `schemas.py:81` |
-| 6 | `apiFetch` 支持 Bearer Header | ✅ 已支持 | `client.ts:6` |
-| 7 | WS ownership TODO | ❌ 仍注释 | `radio.py:110-114` |
+| 5 | `RadioCreateBody` 移除 access_token | ✅ 已移除 | `models/schemas.py:78` |
+| 6 | `apiFetch` 支持 Bearer Header | ✅ 已支持 | `client.ts:3-9` |
+| 7 | WS ownership TODO | ❌ 仍注释 | `radio.py:111-115` |
 | 8 | DB 连接池配置 | ✅ 已配置 | `database.py:11-14`（pool_size=10, max_overflow=20, pre_ping, recycle） |
 | 9 | OpenAI timeout | ⚠️ LLM 已配，TTS 仍缺 | `mimo_llm.py:23` vs `mimo_tts.py` 无 timeout |
-| 10 | SPOTIFY env 可选 | ⚠️ 空字符串默认值无校验 | `config.py:15-16`（功能可接受，但建议标注"未配置时相关接口不可用"） |
+| 10 | SPOTIFY env 可选 | ⚠️ 空字符串默认值无校验 | `config.py`（功能可接受，但建议标注"未配置时相关接口不可用"） |
 
 ## 5. 整改优先级建议
 
