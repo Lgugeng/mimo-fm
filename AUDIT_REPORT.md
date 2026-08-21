@@ -2,11 +2,11 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-08-20
+- **审计日期**: 2026-08-21
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — ⚠️ 远程状态未验证（SSH 22 端口连接超时、HTTPS 443 ls-remote 超时，网络隔离）；本地副本与 `origin/master` 上次成功 fetch（2026-08-19 16:21）保持一致，自 2026-07-05 起无任何代码提交（最后一次代码变更 `92c4e36`）；17 项开放问题逐一 grep/sed 复验全部仍未修复；此前 5 项已验证修复保持有效
-- **Git HEAD**: `2aaa522` = `origin/master`（基于 08-19 fetch 基准；0 ahead / 0 behind）
+- **审查状态**: 增量审查 — 远程可达，`git fetch origin` 成功，本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05 起无任何代码提交（最后一次代码变更 `92c4e36`，此后全部为审计报告文档提交）；17 项开放问题逐一 grep/sed 复验全部仍未修复；此前 5 项已验证修复保持有效
+- **Git HEAD**: `311aca5` = `origin/master`（本次 fetch 实时确认；0 ahead / 0 behind）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
@@ -176,7 +176,7 @@ server {
 
 ## 4. 已验证修复（与上次审计对比）
 
-上次审计（2026-08-19）发现的问题，2026-08-20 复验状态（代码自 07-05 起无变更，结论与 08-19 一致；本次远程不可达，基于本地副本复验）：
+上次审计（2026-08-20）发现的问题，2026-08-21 复验状态（代码自 07-05 起无变更，结论与 08-20 一致；本次远程可达，基于实时同步的本地副本复验）：
 
 | # | 问题 | 状态 | 验证方法 |
 |---|------|------|----------|
@@ -211,17 +211,10 @@ server {
 11. `.env.example` DEBUG 默认值改为 false
 12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
 
-## 6. 本次审查状态（2026-08-20）
+## 6. 本次审查状态（2026-08-21）
 
-- **状态**: ERROR（核心结果已产出，远程不可达 + 推送不可用）
-- **SSH 22**: `git@github.com` 连接超时（TCP 22 经代理可达但 SSH 握手超时，疑似出口防火墙拦截）
-- **HTTPS 443**: `git ls-remote https://github.com/Lgugeng/mimo-fm.git HEAD` 超时（存储凭证存在但无法验证有效性）
-- **结论**: 审计基于本地副本（`origin/master` 08-19 16:21 fetch 基准），17 项问题复验结论不变
-- **网络恢复后手动验证**:
-  ```bash
-  cd /opt/data/workspace/mimo-fm
-  export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no"
-  git fetch origin
-  git log HEAD..origin/master --oneline   # 非空 → git pull 后重审
-  git push
-  ```
+- **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
+- **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"），`git fetch origin` 正常
+- **同步状态**: `git log HEAD..origin/master` 为空 = 0 ahead / 0 behind，与远程完全一致
+- **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更，08-14 以后提交均为审计报告文档
+- **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复；5 项已验证修复（Bearer Header、schema 清理、apiFetch、DB 连接池、LLM timeout）保持有效
