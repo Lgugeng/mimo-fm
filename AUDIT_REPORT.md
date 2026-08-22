@@ -2,11 +2,11 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-08-21
+- **审计日期**: 2026-08-22
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
 - **审查状态**: 增量审查 — 远程可达，`git fetch origin` 成功，本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05 起无任何代码提交（最后一次代码变更 `92c4e36`，此后全部为审计报告文档提交）；17 项开放问题逐一 grep/sed 复验全部仍未修复；此前 5 项已验证修复保持有效
-- **Git HEAD**: `311aca5` = `origin/master`（本次 fetch 实时确认；0 ahead / 0 behind）
+- **Git HEAD**: `0b25038` = `origin/master`（本次 fetch 实时确认；0 ahead / 0 behind）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
@@ -176,7 +176,7 @@ server {
 
 ## 4. 已验证修复（与上次审计对比）
 
-上次审计（2026-08-20）发现的问题，2026-08-21 复验状态（代码自 07-05 起无变更，结论与 08-20 一致；本次远程可达，基于实时同步的本地副本复验）：
+上次审计（2026-08-21）发现的问题，2026-08-22 复验状态（代码自 07-05 起无变更，结论与 08-21 一致；本次远程可达，基于实时同步的本地副本复验）：
 
 | # | 问题 | 状态 | 验证方法 |
 |---|------|------|----------|
@@ -211,10 +211,11 @@ server {
 11. `.env.example` DEBUG 默认值改为 false
 12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
 
-## 6. 本次审查状态（2026-08-21）
+## 6. 本次审查状态（2026-08-22）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"），`git fetch origin` 正常
 - **同步状态**: `git log HEAD..origin/master` 为空 = 0 ahead / 0 behind，与远程完全一致
 - **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更，08-14 以后提交均为审计报告文档
-- **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复；5 项已验证修复（Bearer Header、schema 清理、apiFetch、DB 连接池、LLM timeout）保持有效
+- **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复（逐项 grep/sed 验证，见 §3 文件位置行号与上次一致）；5 项已验证修复（Bearer Header、schema 清理、apiFetch、DB 连接池、LLM timeout）保持有效
+- **连续无变更**: 自 08-14 起连续 9 天（08-14 至 08-22）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；建议项目侧优先处理 P0 两项（PlaylistPage token、Spotify token query 参数）
