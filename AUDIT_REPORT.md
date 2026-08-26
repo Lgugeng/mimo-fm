@@ -2,11 +2,11 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-08-25
+- **审计日期**: 2026-08-26
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — 远程可达，SSH 认证成功，本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05 起无任何代码提交（最后一次代码变更 `92c4e36`，此后全部为审计报告文档提交）；17 项开放问题逐项 grep/sed 复验全部仍未修复；此前 5 项已验证修复保持有效
-- **Git HEAD**: `5666d22` = `origin/master`（本次实时确认；0 ahead / 0 behind）
+- **审查状态**: 增量审查 — 远程可达，SSH 认证成功，本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05 起无任何代码提交（最后一次代码变更 `92c4e36`，此后全部为审计报告文档提交）；17 项开放问题逐项 grep/sed 复验（2026-08-26 重新执行）全部仍未修复；此前 5 项已验证修复保持有效
+- **Git HEAD**: `7608977` = `origin/master`（本次实时确认；0 ahead / 0 behind）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
@@ -211,15 +211,15 @@ server {
 11. `.env.example` DEBUG 默认值改为 false
 12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
 
-## 6. 本次审查状态（2026-08-25）
+## 6. 本次审查状态（2026-08-26）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"），`git pull` 正常
-- **同步状态**: `git status --short` 干净 + `git pull` = Already up to date，HEAD `5666d22` = `origin/master`（0 ahead / 0 behind）
+- **同步状态**: `git status --short` 干净 + `git fetch` + `git log HEAD..origin/master` 为空，HEAD `7608977` = `origin/master`（0 ahead / 0 behind）
 - **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更，08-14 以后提交均为审计报告文档
-- **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复，逐项验证（2026-08-25 执行）：
+- **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复，逐项验证（2026-08-26 执行）：
   - 3.1 `PlaylistPage.tsx:41` 仍传 `undefined` token · 3.2 `spotify.ts:9,13` + `spotify.py:35,44` 仍 query 传参 · 3.3 `encrypt_token` 调用点 = 0 · 3.4 `radio.py:97` 仍 `token=Query(...)` · 3.5 `CallbackPage.tsx:25,28` 仍 localStorage 明文 · 3.6 `RadioPage.tsx:14,55` 仍 mockEpisode
   - 3.7 502 统一处理仍 8 处 · 3.8 CORS 仍仅 localhost + credentials · 3.9 `_episodes` 内存字典 · 3.10 WS ownership 仍 TODO 注释 · 3.11 `mimo_tts.py` timeout 匹配数 = 0（LLM 已配）
-  - 3.12 `radio.ts:5,16` 契约不一致 · 3.13 `tts.ts:12` 仍 FormData · 3.14 requirements 仍 12 处 `>=` · 3.15 Dockerfile 无 USER · 3.16 `.env.example:18` 仍 `DEBUG=true` · 3.17 nginx 无 `client_max_body_size`/`limit_req`
+  - 3.12 `radio.ts:5,16` 契约不一致 · 3.13 `tts.ts:12` 仍 FormData · 3.14 requirements 仍 12 处 `>=` · 3.15 Dockerfile 无 USER（0/0） · 3.16 `.env.example:18` 仍 `DEBUG=true` · 3.17 nginx 无 `client_max_body_size`/`limit_req`
 - **已验证修复保持有效**: Bearer Header（radio.py:38）、schema 清理（schemas.py:81）、apiFetch Header 支持（client.ts:3-9）、DB 连接池（database.py:11-14）、LLM timeout（mimo_llm.py:23）
-- **连续无变更**: 自 08-14 起连续 12 天（08-14 至 08-25）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 51 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
+- **连续无变更**: 自 08-14 起连续 13 天（08-14 至 08-26）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 52 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
