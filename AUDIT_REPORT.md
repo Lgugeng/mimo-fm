@@ -220,7 +220,7 @@ server {
 - **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更，08-14 以后提交均为审计报告文档
 - **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复，逐项验证（2026-09-03 重新执行）：
   - 3.1 `PlaylistPage.tsx:41` 仍传 `undefined` token（第 18 行已读 spotifyToken 但从未使用；createRadio 已移除改走 apiFetch，但 token 参数仍为 undefined） · 3.2 `spotify.py:35,44` 仍 `access_token=Query(...)` 传参 · 3.3 `encrypt_token` 调用点 = 0 · 3.4 `radio.py:97` 仍 `token=Query(...)` · 3.5 `CallbackPage.tsx:25,28` 仍 localStorage 明文 · 3.6 `RadioPage.tsx:14,55` 仍 mockEpisode
-  - 3.7 502 统一处理仍 9 处 · 3.8 CORS 仍仅 localhost + credentials（`main.py:29-30`） · 3.9 `_episodes` 内存字典（`radio.py:22`） · 3.10 WS ownership 仍 TODO 注释（`radio.py:110`） · 3.11 `mimo_tts.py` timeout 匹配数 = 0（LLM 已配）
+  - 3.7 502 统一处理仍 8 处（chat 1 / radio 1 / spotify 2 / tts 4，另 radio.py:80 注释提及 502） · 3.8 CORS 仍仅 localhost + credentials（`main.py:29-30`） · 3.9 `_episodes` 内存字典（`radio.py:22`） · 3.10 WS ownership 仍 TODO 注释（`radio.py:110`） · 3.11 `mimo_tts.py` timeout 匹配数 = 0（LLM 已配）
   - 3.12 `radio.ts:16` 仍请求不存在的 `/radio/episodes` · 3.13 `tts.ts:12` 仍 FormData · 3.14 requirements 仍 12 处 `>=` · 3.15 Dockerfile 无 USER（0/0） · 3.16 `.env.example:18` 仍 `DEBUG=true` · 3.17 nginx 无 `client_max_body_size`/`limit_req`
 - **已验证修复保持有效**: Bearer Header（radio.py:38）、schema 清理（schemas.py:81）、apiFetch Header 支持（client.ts:6）、DB 连接池（database.py:11-14）、LLM timeout（mimo_llm.py:23）
 - **连续无变更**: 自 08-14 起连续 21 天（08-14 至 09-03）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 60 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
