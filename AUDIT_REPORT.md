@@ -211,7 +211,20 @@ server {
 11. `.env.example` DEBUG 默认值改为 false
 12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
 
-## 6. 本次审查状态（2026-09-07）
+## 6. 本次审查状态（2026-09-08）
+
+- **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
+- **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
+- **同步状态**: `git status --short` 干净 + `git log HEAD..origin/master` 为空，HEAD `f0e0421` = `origin/master`（0 ahead / 0 behind）；上次 run 以来无新提交
+- **审计基线检查（防"HEAD 不变短路"）**: `git log 92c4e36..HEAD --oneline` 共 26 个提交，全部为审计报告文档；`git diff --stat 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.backend Dockerfile.frontend docker-compose.yml .env.example project.config.json app.json` 为空，**无未审查代码变更**，审计基线维持 `92c4e36`（2026-07-05）
+- **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更
+- **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复，关键项 2026-09-08 重新 grep 验证：
+  - 3.1 `PlaylistPage.tsx:41` 仍 `apiFetch('/radio/create', undefined, ...)` 传 `undefined` token · 3.2 `api/spotify.py:35,44` 仍 `access_token=Query(...)` · 3.3 `encrypt_token` 调用点 = 0（排除 def） · 3.4 `api/radio.py:97` 仍 `token=Query(...)` · 3.5 `CallbackPage.tsx:25,28` 仍 localStorage 明文存 Spotify access/refresh token · 3.6 `RadioPage.tsx:14,55` 仍 mockEpisode
+  - 3.7–3.17 昨日（09-07）已逐项复验，本次无代码变更，维持原结论
+- **已验证修复保持有效**: Bearer Header（`api/radio.py` create 端点从 Authorization header 提取）、DB 连接池（`database.py` pool_size=10/max_overflow=20/pre_ping/recycle）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts`）、RadioEpisode schema（`models/schemas.py:96`）
+- **连续无变更**: 自 08-14 起连续 26 天（08-14 至 09-08）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 65 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
+
+## 7. 上次审查状态（2026-09-07）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
@@ -225,7 +238,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py` create 端点从 Authorization header 提取）、DB 连接池（`database.py` pool_size=10/max_overflow=20/pre_ping/recycle）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts`）、RadioEpisode schema（`models/schemas.py:96`）
 - **连续无变更**: 自 08-14 起连续 25 天（08-14 至 09-07）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 64 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 7. 上次审查状态（2026-09-06）
+## 8. 上次审查状态（2026-09-06）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **同步状态**: HEAD `4ba65ee` = `origin/master`（0 ahead / 0 behind）；上次 run 以来新增 1 个提交（`4ba65ee`）为上一轮（09-05）审计报告文档，无代码
@@ -238,7 +251,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:41` 从 Authorization header 提取）、DB 连接池（`database.py:11-12` pool_size=10/max_overflow=20）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts:6`）、RadioEpisode schema（`models/schemas.py:96`）
 - **连续无变更**: 自 08-14 起连续 24 天（08-14 至 09-06）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 63 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 8. 上次审查状态（2026-09-05）
+## 9. 上次审查状态（2026-09-05）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **同步状态**: HEAD `fc483cd` = `origin/master`（0 ahead / 0 behind）；`git diff --stat 92c4e36..HEAD -- <代码目录>` 为空，审计基线维持 `92c4e36`（2026-07-05）
