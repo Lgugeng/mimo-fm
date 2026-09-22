@@ -2,12 +2,12 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-09-21
+- **审计日期**: 2026-09-22
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — 远程可达，SSH 认证成功（Hi Lgugeng），本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 78 天）；17 项开放问题逐项 grep 复验（2026-09-21 重新执行，含文件路径核实）全部仍未修复，与 09-20 结果一致；此前 5 项已验证修复保持有效
-- **Git HEAD**: `d52d8f7` = `origin/master`（本次实时确认；0 ahead / 0 behind）
-- **本次审查状态**: 2026-09-21 run — 远程可达，无新代码提交；17 项开放问题复验全部仍未修复；无新问题；审计基线 = `d52d8f7`（= HEAD，代码基线仍为 `92c4e36`）
+- **审查状态**: 增量审查 — 远程可达，SSH 认证成功（Hi Lgugeng），本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 79 天）；17 项开放问题逐项 grep 复验（2026-09-22 重新执行，含文件路径核实）全部仍未修复，与 09-21 结果一致；此前 5 项已验证修复保持有效
+- **Git HEAD**: `35ce0b1` = `origin/master`（本次实时确认；0 ahead / 0 behind）
+- **本次审查状态**: 2026-09-22 run — 远程可达，无新代码提交（HEAD 自 09-21 仅新增 1 个文档提交 `35ce0b1`，代码基线仍为 `92c4e36`）；17 项开放问题复验全部仍未修复；无新问题；审计基线 = `35ce0b1`（= HEAD，代码基线仍为 `92c4e36`）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
