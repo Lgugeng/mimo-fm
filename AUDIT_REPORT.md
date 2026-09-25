@@ -2,12 +2,12 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-09-24
+- **审计日期**: 2026-09-25
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — 远程可达（首次 SSH 探测 1 次超时为网络抖动，第 2 次尝试认证成功 Hi Lgugeng，git fetch 成功），本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 81 天）；17 项开放问题复验（2026-09-24 重新执行 `bash .audit_reverify.sh`，含文件结构预检）全部仍未修复，与 09-23 结果逐项一致；此前 5 项已验证修复保持有效
-- **Git HEAD**: `d28626e` = `origin/master`（本次实时确认；0 ahead / 0 behind）
-- **本次审查状态**: 2026-09-24 run — 远程可达（SSH 首次探测 15s 超时为网络抖动，22 端口 TCP 预检 OPEN + 第 2 次带 ConnectTimeout=20 认证成功），无新代码提交（HEAD 自 09-23 无变化，仍为文档提交 `d28626e`，代码基线仍为 `92c4e36`）；`git diff --name-only 65f0d77..HEAD` 仅 AUDIT_REPORT.md（docs 提交）、代码路径 diff 为空（防"HEAD 不变短路"检查通过）；17 项开放问题复验全部仍未修复（与 09-23 逐项一致：502=8、CORS localhost、WS TODO、DEBUG=true、12 处 `>=` 等全部匹配预期值）；无新问题；审计基线 = `d28626e`（= HEAD，代码基线仍为 `92c4e36`）
+- **审查状态**: 增量审查 — 远程可达（SSH 首次探测即认证成功 Hi Lgugeng，无抖动，git fetch 成功），本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 82 天）；17 项开放问题复验（2026-09-25 重新执行 `bash .audit_reverify.sh`，含文件结构预检）全部仍未修复，与 09-24 结果逐项一致；此前 5 项已验证修复保持有效
+- **Git HEAD**: `321603c` = `origin/master`（本次实时确认；0 ahead / 0 behind）
+- **本次审查状态**: 2026-09-25 run — 远程可达（SSH 首次探测即 `successfully authenticated`，无超时/抖动，一次成功），无新代码提交（HEAD 自 09-24 无变化，仍为文档提交 `321603c`，代码基线仍为 `92c4e36`）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline | grep -v docs:` = 0 个非 docs 提交、`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.* docker-compose.yml .env.example project.config.json app.json` 为空 → 无未审查代码变更；17 项开放问题复验（`bash .audit_reverify.sh`）全部仍未修复，逐项匹配预期值（502=8、CORS localhost+credentials、WS ownership TODO 注释、DEBUG=true、12 处 `>=` 宽松版本、TTS 无 timeout、mockEpisode=2、localStorage 明文 token、Spotify token via Query/URL 等全部命中）；5 项已验证修复保持（Bearer header extract、DB pool 配置、LLM timeout、apiFetch Bearer 支持、RadioEpisode segments schema）；无新问题；审计基线 = `321603c`（= HEAD，代码基线仍为 `92c4e36`）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
