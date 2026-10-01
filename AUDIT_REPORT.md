@@ -2,12 +2,12 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-09-30
+- **审计日期**: 2026-10-01
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — 远程可达（SSH 首次探测即认证通过，无网络抖动），本地与 `origin/master` 完全同步（0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 87 天）；17 项开放问题复验（2026-09-30 重新执行 `bash .audit_reverify.sh`）全部仍未修复，与 09-29 结果逐项一致；此前 5 项已验证修复保持有效
-- **Git HEAD**: `9f49605` = `origin/master`（本次实时确认；0 ahead / 0 behind）
-- **本次审查状态**: 2026-09-30 run — 远程可达（`ssh -T` 首次探测即认证通过 "Hi Lgugeng"，exit 1 为 GitHub 无 shell 的正常行为），无新代码提交（`git log HEAD..origin/master` 为空，HEAD 自 09-29 无变化，仍为文档提交 `9f49605`，代码基线仍为 `92c4e36`）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline | grep -v docs:` = 0 个非 docs 提交、`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.backend Dockerfile.frontend docker-compose.yml .env.example project.config.json app.json` 为空 → 无未审查代码变更；稳态快路径（基线冻结 + 问题清单不变）：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值（502=8、CORS localhost:3000/5173+credentials、WS ownership TODO 注释、DEBUG=true、12 处 `>=` 宽松版本、TTS timeout=0/LLM=1、mockEpisode=2、localStorage 明文 token、encrypt/decrypt 调用点=0、Spotify token via Query/URL、radio/episodes 幽灵端点、FormData vs JSON、Dockerfile USER 0/0、nginx bodysize/limitreq 0/0）；5 项已验证修复保持（Bearer header extract `radio.py:38-45`、DB pool `database.py:11-14`、LLM timeout、apiFetch Bearer `client.ts:6`、RadioEpisode segments `schemas.py:100`）；无新问题；审计基线 = `9f49605`（= HEAD，代码基线仍为 `92c4e36`）
+- **审查状态**: 增量审查 — 远程可达（SSH 22 端口本次持续超时/网络抖动，改用 HTTPS + `~/.git-credentials` 验证，`git ls-remote` 成功），本地与 `origin/master` 完全同步（0 ahead / 0 behind，远端 HEAD = 本地 HEAD = `b70d3b0`）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 88 天）；17 项开放问题复验（2026-10-01 重新执行 `bash .audit_reverify.sh`）全部仍未修复，与 09-30 结果逐项一致；此前 5 项已验证修复保持有效
+- **Git HEAD**: `b70d3b0` = `origin/master`（本次经 HTTPS `git ls-remote` 实时确认；0 ahead / 0 behind）
+- **本次审查状态**: 2026-10-01 run — 远程可达（SSH 22 端口 4 次探测均超时/抖动，TCP 预检 `>/dev/tcp/github.com/22` 开放，判定为网络抖动而非真失败；降级 HTTPS + `~/.git-credentials` 成功，`git ls-remote` 返回远端 HEAD `b70d3b0` = 本地 HEAD，完全同步），无新代码提交（HEAD 自 09-30 无变化，仍为文档提交 `b70d3b0`，代码基线仍为 `92c4e36`）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline | grep -v docs:` = 0 个非 docs 提交、`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.backend Dockerfile.frontend docker-compose.yml .env.example project.config.json app.json` 为空（44 个提交全为 docs）→ 无未审查代码变更；稳态快路径（基线冻结 + 问题清单不变）：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值（502=8、CORS localhost:3000/5173+credentials、WS ownership TODO 注释、DEBUG=true、12 处 `>=` 宽松版本、TTS timeout=0/LLM=1、mockEpisode=2、localStorage 明文 token、encrypt/decrypt 调用点=0、Spotify token via Query/URL、radio/episodes 幽灵端点、FormData vs JSON、Dockerfile USER 0/0、nginx bodysize/limitreq 0/0）；5 项已验证修复保持（Bearer header extract `radio.py:38-45`、DB pool `database.py:11-14`、LLM timeout、apiFetch Bearer `client.ts:6`、RadioEpisode segments `schemas.py:100`）；无新问题；审计基线 = `b70d3b0`（= HEAD，代码基线仍为 `92c4e36`）
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
