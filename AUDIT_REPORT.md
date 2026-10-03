@@ -2,12 +2,12 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-10-02
+- **审计日期**: 2026-10-03
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
-- **审查状态**: 增量审查 — 远程可达（SSH 首次探测即认证通过，无 22 端口抖动），本地与 `origin/master` 完全同步（0 ahead / 0 behind，远端 HEAD = 本地 HEAD = `c6beebf`）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后全部为审计报告文档提交，代码基线已停滞 89 天）；17 项开放问题复验（2026-10-02 重新执行 `bash .audit_reverify.sh`）全部仍未修复，与 10-01 结果逐项一致；此前 5 项已验证修复保持有效
-- **Git HEAD**: `c6beebf` = `origin/master`（本次经 SSH `git fetch` 实时确认；0 ahead / 0 behind）
-- **本次审查状态**: 2026-10-02 run — 远程可达（SSH 一次即认证通过，无抖动），无新代码提交（HEAD 自 10-01 无变化，仍为文档提交 `c6beebf`，代码基线仍为 `92c4e36`）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline | grep -v docs:` = 0 个非 docs 提交（共 45 个全为 docs）、`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.backend Dockerfile.frontend docker-compose.yml .env.example project.config.json app.json` 为空 → 无未审查代码变更；稳态快路径（基线冻结 + 问题清单不变）：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值（502=8、CORS localhost:3000/5173+credentials、WS ownership TODO 注释、DEBUG=true、12 处 `>=` 宽松版本、TTS timeout=0/LLM=1、mockEpisode=2、localStorage 明文 token、encrypt/decrypt 调用点=0、Spotify token via Query/URL、radio/episodes 幽灵端点、FormData vs JSON、Dockerfile USER 0/0、nginx bodysize/limitreq 0/0）；5 项已验证修复保持（Bearer header extract `radio.py:38-45`、DB pool `database.py:11-14`、LLM timeout、apiFetch Bearer `client.ts:6`、RadioEpisode segments `schemas.py:100`）；无新问题；审计基线 = `92c4e36`
+- **审查状态**: 增量审查 — 远程可达（SSH 首次探测即认证通过，无 22 端口抖动），本地与 `origin/master` 完全同步（0 ahead / 0 behind，远端 HEAD = 本地 HEAD = `8e344f9`）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后 46 个提交全部为审计报告文档，代码基线已停滞 90 天）；17 项开放问题复验（2026-10-03 重新执行 `bash .audit_reverify.sh`）全部仍未修复，与 10-02 结果逐项一致；此前 5 项已验证修复保持有效
+- **Git HEAD**: `8e344f9` = `origin/master`（本次经 SSH `git pull` 实时确认；0 ahead / 0 behind）
+- **本次审查状态**: 2026-10-03 run — 远程可达（SSH 一次即认证通过，无抖动），无新代码提交（HEAD 自 10-02 无变化，`8e344f9` 即 10-02 的文档提交，代码基线仍为 `92c4e36`）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline | grep -v docs:` = 0 个非 docs 提交（共 46 个全为 docs）、`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.backend Dockerfile.frontend docker-compose.yml .env.example project.config.json app.json` 为空 → 无未审查代码变更；稳态快路径（基线冻结 + 问题清单不变）：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值（502=8、CORS localhost:3000/5173+credentials、WS ownership TODO 注释、DEBUG=true、12 处 `>=` 宽松版本、TTS timeout=0/LLM=1、mockEpisode=2、localStorage 明文 token、encrypt/decrypt 调用点=0、Spotify token via Query/URL、radio/episodes 幽灵端点、FormData vs JSON、Dockerfile USER 0/0、nginx bodysize/limitreq 0/0）；5 项已验证修复保持（Bearer header extract `radio.py:38-45`、DB pool `database.py:11-14`、LLM timeout、apiFetch Bearer `client.ts:6`、RadioEpisode segments `schemas.py:100`）；无新问题；审计基线 = `92c4e36`
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
@@ -212,20 +212,20 @@ server {
 11. `.env.example` DEBUG 默认值改为 false
 12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
 
-## 6. 本次审查状态（2026-10-02）
+## 6. 本次审查状态（2026-10-03）
 
 - **状态**: SUCCESS（远程可达，SSH 首次探测即认证通过无抖动，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_ID/FEISHU_APP_SECRET 未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 一次即认证通过（"Hi Lgugeng!"），无 22 端口抖动；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
-- **同步状态**: `git fetch` 后 HEAD `c6beebf` = `origin/master`（0 ahead / 0 behind）；`git status --short` 干净（无未跟踪文件，`.audit_reverify.sh` 已于 09-13 固化入库）；上次 run（10-01）以来无新提交
-- **审计基线检查（防"HEAD 不变短路"）**: `git log 92c4e36..HEAD --oneline` 共 45 个提交，全部为审计报告文档（`grep -v 'docs:'` = 0）；`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.* docker-compose.yml .env.example project.config.json app.json` 为空，**无未审查代码变更**，审计基线维持 `92c4e36`（2026-07-05）
+- **同步状态**: `git pull` 返回 Already up to date，HEAD `8e344f9` = `origin/master`（0 ahead / 0 behind）；`git status --short` 干净（无未跟踪文件，`.audit_reverify.sh` 已于 09-13 固化入库）；上次 run（10-02）以来无新提交
+- **审计基线检查（防"HEAD 不变短路"）**: `git log 92c4e36..HEAD --oneline` 共 46 个提交，全部为审计报告文档（`grep -v 'docs:'` = 0）；`git diff --name-only 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.* docker-compose.yml .env.example project.config.json app.json` 为空，**无未审查代码变更**，审计基线维持 `92c4e36`（2026-07-05）
 - **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更
 - **复验结论**: 稳态快路径 — 代码基线冻结 + 问题清单不变，单次执行 `bash .audit_reverify.sh`（脚本随仓库版本化，路径与真实结构 `backend/api/*` 一致，无路径漂移），17 项开放问题（6 高危 / 5 中危 / 6 低危）全部仍未修复，逐项匹配预期值：
   - 3.1 `PlaylistPage.tsx:41` 仍 `apiFetch('/radio/create', undefined, ...)` 传 `undefined` token · 3.2 `api/spotify.py:35,44` 仍 `access_token=Query(...)` + 前端 `spotify.ts:9,13` 仍 URL 拼接 · 3.3 `encrypt_token`/`decrypt_token` 调用点 = 0 · 3.4 `api/radio.py:97` 仍 `token=Query(...)` · 3.5 `CallbackPage.tsx:25,28` 仍 localStorage 明文存 Spotify access/refresh token · 3.6 `RadioPage.tsx` mockEpisode 匹配 2 处
   - 3.7 502 统一处理仍 8 处（chat 1 / radio 1 / spotify 2 / tts 4） · 3.8 CORS 仍仅 localhost:3000/5173 + `allow_credentials=True`（`main.py:29-30`） · 3.9 `_episodes` 内存字典（`radio.py:22,83,90,105`） · 3.10 WS ownership 仍 TODO（`radio.py:109-114`，verify_user_token 调用被注释） · 3.11 `mimo_tts.py` timeout 匹配数 = 0（`mimo_llm.py` 已配 1 处 httpx.Timeout）
   - 3.12 `radio.ts:16` 仍请求后端不存在的 `/radio/episodes` · 3.13 `tts.ts:12` 仍 FormData 上传 vs 后端 JSON body · 3.14 requirements 仍 12 处 `>=` · 3.15 Dockerfile.backend/frontend 均无 USER（0/0） · 3.16 `.env.example:18` 仍 `DEBUG=true` · 3.17 nginx 无 `client_max_body_size`/`limit_req`（0/0）
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:38-45` create 端点从 Authorization header 提取并校验 Bearer 前缀）、DB 连接池（`database.py:11-14` pool_size=10/max_overflow=20/pre_ping/recycle=3600）、LLM timeout（`mimo_llm.py` httpx.Timeout）、apiFetch Header 支持（`client.ts:6` Bearer）、RadioEpisode schema（`models/schemas.py:100` segments）
-- **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 89 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
-- **备注**: 飞书推送因 FEISHU_APP_ID/FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261002.log`
+- **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 90 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
+- **备注**: 飞书推送因 FEISHU_APP_ID/FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261003.log`
 
 ## 7. 上次审查状态（2026-09-20）
 
