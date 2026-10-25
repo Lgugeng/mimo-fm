@@ -2,13 +2,13 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-10-23
+- **审计日期**: 2026-10-25
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
 
-- **审查状态**: 增量审查 — 远程可达（SSH 首次尝试即认证成功，无抖动；`git pull` = Already up to date，HEAD `4387613` = origin/master，0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后 57 个提交全部为审计报告文档，代码基线已停滞 110 天）；17 项开放问题复验（2026-10-23 单次执行 `bash .audit_reverify.sh`）全部仍未修复，与 10-22 结果逐项一致；此前 5 项已验证修复保持有效
-- **Git HEAD**: 本地 `4387613` = `origin/master`（实时同步，0 ahead / 0 behind）
-- **本次审查状态**: 2026-10-23 run — SSH 首次尝试即认证成功（无抖动）；`git pull` = Already up to date，HEAD `4387613` = origin/master（0 ahead / 0 behind）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline` = 57 个提交全部为 docs（非 docs 提交数 = 0）、代码文件 diff 为空（0 文件）→ 无未审查代码变更，审计基线维持 `92c4e36`（停滞 110 天）；稳态快路径：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值；5 项已验证修复保持；无新问题；报告已提交并推送
+- **审查状态**: 增量审查 — 远程可达（SSH 首次尝试即认证成功，无抖动；`git fetch` 成功，HEAD `e7669ad` = origin/master，0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后 58 个提交全部为审计报告文档，代码基线已停滞 112 天）；17 项开放问题复验（2026-10-25 单次执行 `bash .audit_reverify.sh`）全部仍未修复，逐项匹配预期值；此前 5 项已验证修复保持有效
+- **Git HEAD**: 本地 `e7669ad` = `origin/master`（实时同步，0 ahead / 0 behind）
+- **本次审查状态**: 2026-10-25 run — SSH 首次尝试即认证成功（无抖动）；`git fetch` 成功，HEAD `e7669ad` = origin/master（0 ahead / 0 behind）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline` = 58 个提交全部为 docs（非 docs 提交数 = 0）、代码路径 diff 为空（0 文件）→ 无未审查代码变更，审计基线维持 `92c4e36`（停滞 112 天）；稳态快路径：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值；5 项已验证修复保持；无新问题；报告已提交并推送
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
@@ -213,7 +213,18 @@ server {
 11. `.env.example` DEBUG 默认值改为 false
 12. nginx 增加 `client_max_body_size` 与 `limit_req` 限流
 
-## 6. 本次审查状态（2026-10-23）
+## 6. 本次审查状态（2026-10-25）
+
+- **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 /opt/data/home/.hermes/cron-logs/mimo_20261025.log）
+- **健康检查**: SSH key 存在；`ssh -T` 首次尝试即认证成功（"Hi Lgugeng!"，无抖动）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
+- **同步状态**: `git status --short` 干净 + `git fetch` 成功，HEAD `e7669ad` = `origin/master`（0 ahead / 0 behind）；无未推送提交
+- **审计基线检查（防"HEAD 不变短路"）**: `git log 92c4e36..HEAD --oneline` 共 58 个提交，全部为审计报告文档（非 docs 提交数 = 0）；代码路径（backend/ frontend/ nginx.conf Dockerfile.* docker-compose.yml .env.example）相对基线 diff 为空（0 文件），**无未审查代码变更**，审计基线维持 `92c4e36`（2026-07-05，停滞 112 天）
+- **代码变更**: 自 2026-07-05（`92c4e36`）起无任何代码变更
+- **复验结论**: 稳态快路径（基线冻结 + 问题清单不变）— 单次执行 `bash .audit_reverify.sh`（仓库内版本化脚本，路径与真实结构 `backend/api/*` 一致，无路径漂移），17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复，逐项匹配预期值（fifty02-count=8、tts-timeout=0、encrypt/decrypt call-site=0、req-gte=12、Docker USER=0/0、nginx bodysize/limitreq=0/0、Spotify token 仍 URL query、WS ownership 仍 TODO、localStorage 明文仍存）
+- **已验证修复保持有效**: Bearer Header（`api/radio.py:38-45` create 端点从 Authorization header 提取并校验前缀）、DB 连接池（`database.py:11-14` pool_size=10/max_overflow=20/pre_ping/recycle=3600）、LLM timeout（`mimo_llm.py` httpx.Timeout）、apiFetch Header 支持（`client.ts:6` Bearer）、RadioEpisode segments schema（`models/schemas.py:100`）
+- **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 112 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
+
+## 7. 本次审查状态（2026-10-23）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 /opt/data/home/.hermes/cron-logs/mimo_20261023.log）
 - **健康检查**: SSH key 存在；`ssh -T` 首次尝试即认证成功（"Hi Lgugeng!"，无抖动）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
@@ -227,7 +238,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:38-45` create 端点从 Authorization header 提取并校验前缀）、DB 连接池（`database.py:11-14` pool_size=10/max_overflow=20/pre_ping/recycle=3600）、LLM timeout（`mimo_llm.py` httpx.Timeout）、apiFetch Header 支持（`client.ts:6` Bearer）、RadioEpisode schema（`models/schemas.py:100` segments）
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 110 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 7. 本次审查状态（2026-10-22）
+## 8. 本次审查状态（2026-10-22）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 /opt/data/home/.hermes/cron-logs/mimo_20261022.log）
 - **健康检查**: SSH key 存在（/opt/data/home/.ssh/id_ed25519，411 字节）；`ssh -T` 首次尝试即认证成功（"Hi Lgugeng!"，无抖动）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
@@ -241,7 +252,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:38-45` create 端点从 Authorization header 提取并校验前缀）、DB 连接池（`database.py:11-14` pool_size=10/max_overflow=20/pre_ping/recycle=3600）、LLM timeout（`mimo_llm.py` httpx.Timeout）、apiFetch Header 支持（`client.ts:6` Bearer）、RadioEpisode schema（`models/schemas.py:100` segments）
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交（08-14 至 10-22），最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 109 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 8. 上次审查状态（2026-10-17）
+## 9. 上次审查状态（2026-10-17）
 
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **健康检查**: SSH key 存在（`/opt/data/home/.ssh/id_ed25519`，411 字节）；`ssh -i ~/.ssh/id_ed25519 -T git@github.com` 首次尝试即认证成功（"Hi Lgugeng!"，无抖动）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
@@ -255,7 +266,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:38-45` create 端点从 Authorization header 提取）、DB 连接池（`database.py:11-14` pool_size=10/max_overflow=20/pre_ping/recycle=3600）、LLM timeout（`mimo_llm.py` httpx.Timeout）、apiFetch Header 支持（`client.ts:6`）、RadioEpisode schema（`models/schemas.py:100` segments）
 - **连续无变更**: 自 08-14 起连续 40+ 天（08-14 至 10-17）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 104 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 9. 上次审查状态（2026-10-16）
+## 10. 上次审查状态（2026-10-16）
 
 - **状态**: ERROR（远程不可达 — SSH 与 HTTPS 均超时，无法同步/推送；核心审查结果已在本地副本完成并本地提交）
 - **健康检查**: SSH key 存在（`/opt/data/home/.ssh/id_ed25519`，411 字节，05-26 创建）；`ssh -T` 有界重试共 7 次（timeout 15~45s + ConnectTimeout 15~20s + 间隔 3~5s，总时长 3 分钟+）全部 EXIT=124；TCP 预检 22 端口 OPEN、443 端口超时 → 判定远程完全不可达且非瞬时抖动（既往抖动均在 1~2 次重试内恢复）；HTTPS 降级通道因 443 不通同样不可用
@@ -270,7 +281,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 103 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本 run 远程完全不可达，报告更新已本地提交，**未能推送**（待网络恢复后 `git push`）；结果已本地保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261016.log`
 
-## 10. 上次审查状态（2026-10-15）
+## 11. 上次审查状态（2026-10-15）
 
 - **状态**: SUCCESS（SSH 一次即认证通过，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 cron-logs）
 - **SSH**: key 存在（`~/.ssh/id_ed25519`，`$HOME=/opt/data/home`），`ssh -T` 一次即认证通过（"Hi Lgugeng!"），无 22 端口抖动；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断；全程未走 HTTPS 降级
@@ -285,7 +296,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 102 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本 run 环境健康检查全部通过（SSH 一次即认证通过，无抖动，无需降级，未动用 HTTPS 只读 token 后备通道）；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261015.log`
 
-## 11. 上次审查状态（2026-10-14）
+## 12. 上次审查状态（2026-10-14）
 
 - **状态**: SUCCESS（SSH 有界重试 2 次后认证通过，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 cron-logs；飞书推送未执行 — 本 run 任务范围未包含飞书写入步骤，结果已本地保存）
 - **SSH**: key 存在（`~/.ssh/id_ed25519`，05-26 创建）；首次探测遇 22 端口瞬时抖动：TCP 预检 `/dev/tcp/github.com/22` 20s 超时、`ssh -T`（ConnectTimeout=15）EXIT=124，判定为网络抖动而非真不可达，按有界重试策略第 2 次重试（sleep 5s）即认证通过（"Hi Lgugeng! You've successfully authenticated"），exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断；全程未走 HTTPS 降级
@@ -300,7 +311,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 101 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本 run 唯一异常为 SSH 首次探测 22 端口瞬时抖动（TCP 预检 + ssh -T 均超时），有界重试第 2 次即恢复，符合"瞬时抖动不应一次判死"处置原则；推送走 SSH（`~/.git-credentials` HTTPS token 仅 read scope，无法推送）；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261014.log`
 
-## 12. 上次审查状态（2026-10-12）
+## 13. 上次审查状态（2026-10-12）
 
 - **状态**: SUCCESS（SSH 一次即认证通过，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 cron-logs；飞书推送未执行 — 本 run 任务范围未包含飞书写入步骤）
 - **SSH**: key 存在（`~/.ssh/id_ed25519`，`$HOME=/opt/data/home`），`ssh -T` 一次即认证通过（"Hi Lgugeng!"），无 22 端口抖动；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断。注：首查曾误用 `/opt/data/.ssh/`（错误路径，实际 `HOME=/opt/data/home`）一度误判 key 缺失，更正后 SSH 通道正常，全程未走 HTTPS 降级；`~/.git-credentials` 的 HTTPS token 实测仅 read scope（`ls-remote` 可读、push 报 "Invalid username or token"），本次推送走 SSH
@@ -315,7 +326,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 99 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本 run 环境健康检查全部通过（SSH 一次即认证通过，无需降级；推送走 SSH）；`~/.git-credentials` HTTPS token 仅 read scope（push 被拒）——若日后 SSH key 不可用，HTTPS 降级只能读不能推，需补 `repo` scope token；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261012.log`
 
-## 13. 上次审查状态（2026-10-10）
+## 14. 上次审查状态（2026-10-10）
 
 - **状态**: SUCCESS（SSH 首次探测即认证通过，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 cron-logs；飞书推送未执行 — 本 run 任务范围未包含飞书写入步骤，结果已本地保存）
 - **SSH**: key 存在（`~/.ssh/id_ed25519`，05-26 创建），`ssh -T` 一次即认证通过（"Hi Lgugeng!"），无 22 端口抖动；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
@@ -330,7 +341,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 97 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本 run 环境健康检查全部通过（SSH 一次即认证通过，无需降级）；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261010.log`
 
-## 14. 上次审查状态（2026-10-09）
+## 15. 上次审查状态（2026-10-09）
 - **状态**: SUCCESS（SSH 首次探测即认证通过，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 cron-logs；飞书推送未执行 — 本 run 任务范围未包含飞书写入步骤，结果已本地保存）
 - **SSH**: key 存在（`~/.ssh/id_ed25519`，05-26 创建），`ssh -T` 一次即认证通过（"Hi Lgugeng!"），无 22 端口抖动；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断（10-08 的 SSH 4 次超时抖动未复现）
 - **同步状态**: `git pull` 拉取 1 个 10-08 文档提交（`883b91c`→`bfe3df6`），随后本地 HEAD `bfe3df6` = `origin/master`（`git ls-remote` 实时确认，0 ahead / 0 behind）；`git status --short` 干净；上次 run（10-08）以来远端无新提交（间隔 1 天）
@@ -344,7 +355,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 96 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本 run 环境健康检查全部通过（SSH/HTTPS 均可达，HTTPS `ls-remote` 首次 30s 超时为瞬时抖动，SSH 通道正常工作，无需降级）；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261009.log`
 
-## 15. 上次审查状态（2026-10-08）
+## 16. 上次审查状态（2026-10-08）
 - **状态**: SUCCESS（SSH 22 端口握手 4 次重试均超时 → 降级 HTTPS 确认远程可达且完全同步，17 项问题复验完成，报告已更新并推送；结果已本地保存至 cron-logs）
 - **SSH**: key 存在（`~/.ssh/id_ed25519`，05-26 创建），TCP 22 预检可达，但 `ssh -T` 4 次有界重试（15s→45s 递增 + ConnectTimeout=15）均超时且无 "successfully authenticated" 输出 → 判定为 SSH 层异常（非网络全断、非凭证失效，未判 CRITICAL），按 skill 规范降级 HTTPS
 - **同步状态**: 降级 HTTPS（`~/.git-credentials` 凭证）：`GIT_TERMINAL_PROMPT=0 git ls-remote https://github.com/Lgugeng/mimo-fm.git HEAD` = `883b91c7ccdd83ab28a4fe9031a976c0e4183b06` = 本地 HEAD（0 ahead / 0 behind，远程实时可达，无需"仅本地副本"标注）；`git status --short` 干净；上次 run（10-07）以来远端无新提交（间隔 1 天）
@@ -358,7 +369,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 95 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 本次 SSH 22 端口握手超时（TCP 可达但 SSH 层不通，4 次重试未恢复）为本 run 唯一环境异常，已通过 HTTPS 降级完整闭环（同步确认 + 推送均走 HTTPS）；建议网络恢复后复查 22 端口出向策略；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261008.log`
 
-## 16. 上次审查状态（2026-10-07）
+## 17. 上次审查状态（2026-10-07）
 - **状态**: SUCCESS（远程可达，SSH 首次探测即认证通过无抖动，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送成功 — tenant token 经凭证文件获取，MiMo FM 2026-10-07 审查条目已追加至飞书审计文档，结果同步本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 一次即认证通过（"Hi Lgugeng!"），无 22 端口抖动；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git pull` 返回 Already up to date，HEAD `e08ba58` = `origin/master`（0 ahead / 0 behind）；`git status --short` 干净（无未跟踪文件，`.audit_reverify.sh` 已于 09-13 固化入库）；上次 run（10-03）以来远端无新提交（间隔 4 天）
@@ -372,7 +383,7 @@ server {
 - **连续无变更**: 自 08-14 起连续增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 94 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 飞书推送成功（tenant_access_token 经 `feishu_app_credentials.json` 获取，doc `DNibwYj3UiVJNCkOsZ0c87Oynvc` 已追加 MiMo FM 2026-10-07 条目）；结果已同步保存至 `/opt/data/home/.hermes/cron-logs/mimo_20261007.log`
 
-## 17. 上次审查状态（2026-09-20）
+## 18. 上次审查状态（2026-09-20）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_ID/FEISHU_APP_SECRET 均未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git pull` 返回 Already up to date，HEAD `cc2c047` = `origin/master`（0 ahead / 0 behind）；`git status --short` 仅 1 个未跟踪文件 `.audit_reverify.sh`（历次 cron 复验脚本残留，非代码变更）；上次 run（09-19）以来无新提交
@@ -386,7 +397,7 @@ server {
 - **连续无变更**: 自 08-14 起连续 37 天（08-14 至 09-20）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 77 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 仓库残留未跟踪文件 `.audit_reverify.sh`（历次复验脚本残留，本 run 已执行验证其 grep 模式与真实代码结构一致）；飞书推送因 FEISHU_APP_ID/FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20260920.log`
 
-## 18. 上次审查状态（2026-09-19）
+## 19. 上次审查状态（2026-09-19）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_ID/FEISHU_APP_SECRET 均未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git pull` 返回 Already up to date，HEAD `2116e1d` = `origin/master`（0 ahead / 0 behind）；`git status --short` 仅 1 个未跟踪文件 `.audit_reverify.sh`（历次 cron 复验脚本残留，非代码变更）；上次 run（09-18）以来无新提交
@@ -400,7 +411,7 @@ server {
 - **连续无变更**: 自 08-14 起连续 36 天（08-14 至 09-19）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 76 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 仓库残留未跟踪文件 `.audit_reverify.sh`（历次复验脚本残留，本 run 已执行验证其 grep 模式与真实代码结构一致）；飞书推送因 FEISHU_APP_ID/FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20260919.log`
 
-## 19. 上次审查状态（2026-09-18）
+## 20. 上次审查状态（2026-09-18）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_SECRET/FEISHU_APP_ID 均未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git fetch` 后 HEAD `6582f2b` = `origin/master`（0 ahead / 0 behind）；`git status --short` 仅 1 个未跟踪文件 `.audit_reverify.sh`（历次 cron 复验脚本残留，非代码变更）；上次 run（09-17）以来无新提交
@@ -414,7 +425,7 @@ server {
 - **连续无变更**: 自 08-14 起连续 35 天（08-14 至 09-18）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 75 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 仓库残留未跟踪文件 `.audit_reverify.sh`（历次复验脚本残留，本 run 已执行验证其 grep 模式与真实代码结构一致）；飞书推送因 FEISHU_APP_SECRET/FEISHU_APP_ID 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20260918.log`
 
-## 20. 上次审查状态（2026-09-17）
+## 21. 上次审查状态（2026-09-17）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_SECRET 未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git fetch` 后 HEAD `8565a52` = `origin/master`（0 ahead / 0 behind）；`git status --short` 仅 1 个未跟踪文件 `.audit_reverify.sh`（历次 cron 复验脚本残留，非代码变更）；上次 run（09-16）以来无新提交
@@ -428,7 +439,7 @@ server {
 - **连续无变更**: 自 08-14 起连续 34 天（08-14 至 09-17）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 74 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 仓库残留未跟踪文件 `.audit_reverify.sh`（历次复验脚本残留）；飞书推送因 FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20260917.log`
 
-## 21. 上次审查状态（2026-09-16）
+## 22. 上次审查状态（2026-09-16）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_SECRET 未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 仅 1 个未跟踪文件 `.audit_reverify.sh`（历次 cron 复验脚本残留，非代码变更）+ `git pull` → Already up to date，HEAD `5ec65fe` = `origin/master`（0 ahead / 0 behind）；上次 run（09-14）以来无新提交
@@ -442,7 +453,7 @@ server {
 - **连续无变更**: 自 08-14 起连续 33 天（08-14 至 09-16）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 73 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 仓库残留未跟踪文件 `.audit_reverify.sh`（历次复验脚本残留）；飞书推送因 FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20260916.log`
 
-## 22. 上次审查状态（2026-09-14）
+## 23. 上次审查状态（2026-09-14）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送；飞书推送未执行 — FEISHU_APP_SECRET 未配置，结果已本地保存至 cron-logs）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 仅 1 个未跟踪文件 `.audit_reverify.sh`（历次 cron 复验脚本残留，非代码变更）+ `git log HEAD..origin/master` 为空，`git fetch` 后 HEAD `94e6077` = `origin/master`（0 ahead / 0 behind）；上次 run（09-12）以来无新提交
@@ -456,7 +467,7 @@ server {
 - **连续无变更**: 自 08-14 起连续 31 天（08-14 至 09-14）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 70 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 - **备注**: 仓库残留未跟踪文件 `.audit_reverify.sh`（复验脚本，本 run 已执行验证其 grep 模式与真实代码结构一致）；飞书推送因 FEISHU_APP_SECRET 未配置未执行，结果已按规范保存至 `/opt/data/home/.hermes/cron-logs/mimo_20260914.log`
 
-## 23. 上次审查状态（2026-09-12）
+## 24. 上次审查状态（2026-09-12）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 干净 + `git log HEAD..origin/master` 为空，`git fetch` 后 HEAD `aa2cb53` = `origin/master`（0 ahead / 0 behind）；上次 run（09-11）以来无新提交
@@ -469,7 +480,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:41` create 端点从 Authorization header 提取）、DB 连接池（`database.py:11-12` pool_size=10/max_overflow=20）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts:6` Bearer）、RadioEpisode schema（`models/schemas.py:100` segments）
 - **连续无变更**: 自 08-14 起连续 29 天（08-14 至 09-12）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 69 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 24. 上次审查状态（2026-09-11）
+## 25. 上次审查状态（2026-09-11）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 干净 + `git log HEAD..origin/master` 为空，`git pull` → Already up to date，HEAD `afb12cb` = `origin/master`（0 ahead / 0 behind）；上次 run（09-10）以来无新提交
@@ -482,7 +493,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:38` create 端点从 Authorization header 提取）、DB 连接池（`database.py:11-14` pool_size=10/max_overflow=20/pre_ping/recycle=3600）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts:6`）、RadioEpisode schema（`models/schemas.py:96,100` segments）
 - **连续无变更**: 自 08-14 起连续 28 天（08-14 至 09-11）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 68 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 25. 上次审查状态（2026-09-10）
+## 26. 上次审查状态（2026-09-10）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 干净 + `git log HEAD..origin/master` 为空，HEAD `1295784` = `origin/master`（0 ahead / 0 behind）；上次 run（09-08）以来无新提交
@@ -495,7 +506,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py` create 端点从 Authorization header 提取）、DB 连接池（`database.py` pool_size=10/max_overflow=20/pre_ping/recycle）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts`）、RadioEpisode schema（`models/schemas.py:96`）
 - **连续无变更**: 自 08-14 起连续 27 天（08-14 至 09-10）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 67 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 26. 上次审查状态（2026-09-08）
+## 27. 上次审查状态（2026-09-08）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 干净 + `git log HEAD..origin/master` 为空，HEAD `f0e0421` = `origin/master`（0 ahead / 0 behind）；上次 run 以来无新提交
@@ -507,7 +518,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py` create 端点从 Authorization header 提取）、DB 连接池（`database.py` pool_size=10/max_overflow=20/pre_ping/recycle）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts`）、RadioEpisode schema（`models/schemas.py:96`）
 - **连续无变更**: 自 08-14 起连续 26 天（08-14 至 09-08）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 65 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 27. 上次审查状态（2026-09-07）
+## 28. 上次审查状态（2026-09-07）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **SSH 22**: `ssh -i ~/.ssh/id_ed25519 -T git@github.com` 认证成功（"Hi Lgugeng!"）；exit 1 为 GitHub 无 shell 的正常行为，以输出文本判断
 - **同步状态**: `git status --short` 干净 + `git log HEAD..origin/master` 为空，HEAD `e6f6df1` = `origin/master`（0 ahead / 0 behind）；上次 run 以来无新提交
@@ -520,7 +531,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py` create 端点从 Authorization header 提取）、DB 连接池（`database.py` pool_size=10/max_overflow=20/pre_ping/recycle）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts`）、RadioEpisode schema（`models/schemas.py:96`）
 - **连续无变更**: 自 08-14 起连续 25 天（08-14 至 09-07）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 64 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 28. 上次审查状态（2026-09-06）
+## 29. 上次审查状态（2026-09-06）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **同步状态**: HEAD `4ba65ee` = `origin/master`（0 ahead / 0 behind）；上次 run 以来新增 1 个提交（`4ba65ee`）为上一轮（09-05）审计报告文档，无代码
 - **审计基线检查（防"HEAD 不变短路"）**: `git log 92c4e36..HEAD --oneline` 共 24 个提交，全部为审计报告文档；`git diff --stat 92c4e36..HEAD -- backend/ frontend/ nginx.conf Dockerfile.backend Dockerfile.frontend docker-compose.yml .env.example` 为空，**无未审查代码变更**，审计基线维持 `92c4e36`（2026-07-05）
@@ -532,7 +543,7 @@ server {
 - **已验证修复保持有效**: Bearer Header（`api/radio.py:41` 从 Authorization header 提取）、DB 连接池（`database.py:11-12` pool_size=10/max_overflow=20）、LLM timeout（`mimo_llm.py:23` httpx.Timeout connect=5s）、apiFetch Header 支持（`client.ts:6`）、RadioEpisode schema（`models/schemas.py:96`）
 - **连续无变更**: 自 08-14 起连续 24 天（08-14 至 09-06）的增量审查均确认无代码提交，最后一次代码提交仍为 07-05 的 `92c4e36`；项目已停滞 63 天，建议重点推动 P0 两项（PlaylistPage token 传递、Spotify token query 改 Header）
 
-## 29. 上次审查状态（2026-09-05）
+## 30. 上次审查状态（2026-09-05）
 - **状态**: SUCCESS（远程可达，本地与 origin/master 实时同步，17 项问题复验完成，报告已更新并推送）
 - **同步状态**: HEAD `fc483cd` = `origin/master`（0 ahead / 0 behind）；`git diff --stat 92c4e36..HEAD -- <代码目录>` 为空，审计基线维持 `92c4e36`（2026-07-05）
 - **复验结论**: 17 项开放问题（6 高危 / 5 中危 / 6 低危）全部复验仍未修复（2026-09-05 逐项 grep）
