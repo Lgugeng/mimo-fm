@@ -2,13 +2,13 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-10-25
+- **审计日期**: 2026-10-26
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
 
-- **审查状态**: 增量审查 — 远程可达（SSH 首次尝试即认证成功，无抖动；`git fetch` 成功，HEAD `e7669ad` = origin/master，0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后 58 个提交全部为审计报告文档，代码基线已停滞 112 天）；17 项开放问题复验（2026-10-25 单次执行 `bash .audit_reverify.sh`）全部仍未修复，逐项匹配预期值；此前 5 项已验证修复保持有效
-- **Git HEAD**: 本地 `e7669ad` = `origin/master`（实时同步，0 ahead / 0 behind）
-- **本次审查状态**: 2026-10-25 run — SSH 首次尝试即认证成功（无抖动）；`git fetch` 成功，HEAD `e7669ad` = origin/master（0 ahead / 0 behind）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline` = 58 个提交全部为 docs（非 docs 提交数 = 0）、代码路径 diff 为空（0 文件）→ 无未审查代码变更，审计基线维持 `92c4e36`（停滞 112 天）；稳态快路径：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值；5 项已验证修复保持；无新问题；报告已提交并推送
+- **审查状态**: 增量审查 — 远程可达（SSH 首次尝试即认证成功，无抖动；`git fetch` 成功，HEAD `9de8d92` = origin/master，0 ahead / 0 behind）；自 2026-07-05（`92c4e36`）起无任何代码提交（此后 59 个提交全部为审计报告文档，代码基线已停滞 113 天）；17 项开放问题复验（2026-10-26 单次执行 `bash .audit_reverify.sh`）全部仍未修复，逐项匹配预期值（含路径存在性预检，无 `No such file or directory`）；此前 5 项已验证修复保持有效
+- **Git HEAD**: 本地 `9de8d92` = `origin/master`（实时同步，0 ahead / 0 behind）
+- **本次审查状态**: 2026-10-26 run — SSH 首次尝试即认证成功（无抖动）；`git fetch` 成功，HEAD `9de8d92` = origin/master（0 ahead / 0 behind）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline` = 59 个提交全部为 docs（非 docs 提交数 = 0）、代码路径 diff 为空（0 文件）→ 无未审查代码变更，审计基线维持 `92c4e36`（停滞 113 天）；稳态快路径：`bash .audit_reverify.sh` 单次执行，17 项开放问题全部仍未修复且逐项匹配预期值（3.7 fifty02-count=8、3.3 call-site-count=0、3.11 tts-timeout=0/llm-timeout=1、3.14 req-gte=12、3.15 USER=0/0、3.17 nginx=0/0 等全部对数一致）；5 项已验证修复保持（Bearer header、DB pool、apiFetch Bearer、RadioEpisode segments schema）；无新问题；上次延迟推送债务：无（远程全程可达）；报告已提交并推送
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
