@@ -2,13 +2,13 @@
 
 ## 1. 审计概述
 - **项目名称**: MiMo FM — AI Radio (Claude FM clone powered by MiMo APIs)
-- **审计日期**: 2026-10-29
+- **审计日期**: 2026-10-30
 - **审计范围**: 全量代码（backend FastAPI + frontend React/Vite）
 - **技术栈**: Python 3.11 / FastAPI / SQLAlchemy / SQLite · React 18 / TypeScript / Vite / Tailwind · Docker + Nginx
 
-- **审查状态**: 增量审查 — 远程可达（SSH 首次尝试即认证成功，无抖动，fetch EXIT=0）；自 2026-07-05（`92c4e36`）起无任何代码提交（基线后 61 个提交全部为审计报告文档，代码路径 diff 为空（0 文件），代码基线已停滞 116 天）；17 项开放问题复验（2026-10-29 单次执行 `bash .audit_reverify.sh`）全部仍未修复，逐项匹配预期值，无路径错误；此前已验证修复（Bearer header、DB pool、apiFetch Bearer、RadioEpisode segments schema、LLM timeout）保持有效；上次延迟推送债务：无
-- **Git HEAD**: `3ea6965`，本次 run 前与 `origin/master` 同步（0 ahead / 0 behind）；本次报告提交已推送并验证
-- **本次审查状态**: 2026-10-29 run — SSH 首次尝试即认证成功（无抖动）；远程同步验证（HEAD..origin/master = 0，fetch EXIT=0）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline`（提交前）= 61 个提交全部为 docs（非 docs 提交数 = 0）、代码路径（backend/ frontend/ nginx.conf Dockerfile.* docker-compose.yml .env.example project.config.json app.json）diff 为空（0 文件）→ 无未审查代码变更，审计基线维持 `92c4e36`（停滞 116 天）；稳态快路径：`bash .audit_reverify.sh` 单次执行对数一致（3.1 `PlaylistPage.tsx:41` 仍传 `undefined` token、3.2 Spotify token 仍 URL query（后端 `Query(...)` + 前端拼接）、3.3 encrypt/decrypt call-site-count=0、3.4 WS token 仍 `Query(...)`、3.5 localStorage 仍明文、3.6 mockEpisode count=2、3.7 fifty02-count=8、3.8 CORS 仍 localhost×2 + credentials、3.9 `_episodes` 内存字典、3.10 WS ownership 仍 TODO、3.11 tts-timeout=0/llm-timeout=1、3.12 仍请求不存在的 `/radio/episodes`、3.13 仍 FormData、3.14 req-gte=12、3.15 USER=0/0、3.16 仍 `DEBUG=true`、3.17 nginx=0/0）；已验证修复复核全部保持（Bearer `radio.py:38-45`、DB pool `database.py:11-14`、apiFetch Bearer `client.ts:6`、RadioEpisode segments `schemas.py:100`）；无新问题；无延迟推送债务；报告已提交并推送
+- **审查状态**: 增量审查 — 远程可达（SSH 首次尝试即认证成功，无抖动；fetch EXIT=0，远程 master == 本地 HEAD `8d2627a`，完全同步）；自 2026-07-05（`92c4e36`）起无任何代码提交（基线后 63 个提交全部为审计报告文档 + reverify 脚本，代码路径 diff 为空（0 文件），代码基线已停滞 117 天）；17 项开放问题复验（2026-10-30 单次执行 `bash .audit_reverify.sh`）全部仍未修复，逐项匹配预期值，无路径错误；此前已验证修复（Bearer header、DB pool、apiFetch Bearer、RadioEpisode segments schema、LLM timeout）保持有效；上次延迟推送债务：无（10-16 债务已于 10-17 清偿）
+- **Git HEAD**: `8d2627a`，本次 run 前与 `origin/master`（FETCH_HEAD `8d2627a`）同步（0 ahead / 0 behind）；本次报告提交已推送并验证
+- **本次审查状态**: 2026-10-30 run — SSH 首次尝试即认证成功（无抖动）；远程同步验证（`git fetch` EXIT=0，FETCH_HEAD == HEAD `8d2627a`）；防"HEAD 不变短路"检查：`git log 92c4e36..HEAD --oneline`（提交前）= 63 个提交全部为 docs（触碰文件仅 `AUDIT_REPORT.md` + `.audit_reverify.sh`）、排除报告/脚本后 `git diff --stat 92c4e36 HEAD` = 空（0 文件）→ 无未审查代码变更，审计基线维持 `92c4e36`（停滞 117 天）；稳态快路径：`bash .audit_reverify.sh` 单次执行对数一致（3.1 `PlaylistPage.tsx:41` 仍传 `undefined` token、3.2 Spotify token 仍 URL query（后端 `Query(...)` + 前端拼接）、3.3 encrypt/decrypt call-site-count=0、3.4 WS token 仍 `Query(...)`、3.5 localStorage 仍明文、3.6 mockEpisode count=2、3.7 fifty02-count=8、3.8 CORS 仍 localhost×2 + credentials、3.9 `_episodes` 内存字典、3.10 WS ownership 仍 TODO、3.11 tts-timeout=0/llm-timeout=1、3.12 仍请求不存在的 `/radio/episodes`、3.13 仍 FormData、3.14 req-gte=12、3.15 USER=0/0、3.16 仍 `DEBUG=true`、3.17 nginx=0/0）；已验证修复复核全部保持（Bearer `radio.py:38-45`、DB pool `database.py:11-14`、apiFetch Bearer `client.ts:6`、RadioEpisode segments `schemas.py:100`）；无新问题；无延迟推送债务；报告已提交并推送
 
 ## 2. 审计结果总览
 | 风险等级 | 数量 | 占比 | 说明 |
